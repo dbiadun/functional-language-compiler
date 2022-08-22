@@ -1,9 +1,9 @@
 package main
 
 import (
+	"functional-language-compiler/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"log"
-	"participle-test/parser"
 	"strconv"
 )
 
