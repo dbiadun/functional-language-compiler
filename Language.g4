@@ -12,7 +12,7 @@ WHITESPACE: [ \r\n\t]+ -> skip;
 start : expr EOF;
 
 expr
-   : e1=expr op=('*'|'/') e2=expr # EMulDiv
-   | e1=expr op=('+'|'-') e2=expr # EAddSub
-   | NUMBER                       # Number
-   ;
+    : e1=expr op=('*'|'/') e2=expr # EMulDiv
+    | e1=expr op=('+'|'-') e2=expr # EAddSub
+    | NUMBER                       # Number
+    ;
