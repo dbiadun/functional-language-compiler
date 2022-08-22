@@ -6,10 +6,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-type languageListener struct {
-	*parser.BaseLanguageListener
-}
-
 func main() {
 	// spew config
 	spew.Config.DisablePointerAddresses = true
