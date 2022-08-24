@@ -1,11 +1,14 @@
 package main
 
+import "github.com/antlr/antlr4/runtime/Go/antlr"
+
 // Base node
 
 type ASTNode interface {
 	astNode()
 	getPos() (int, int)
 	setPos(int, int)
+	setPosFromCtx(antlr.ParserRuleContext)
 }
 
 type BaseASTNode struct {
@@ -21,6 +24,13 @@ func (node *BaseASTNode) getPos() (int, int) {
 func (node *BaseASTNode) setPos(line int, col int) {
 	node.posLine = line
 	node.posCol = col + 1 // change counting from 0 to counting from 1
+}
+
+func (node *BaseASTNode) setPosFromCtx(ctx antlr.ParserRuleContext) {
+	line := ctx.GetStart().GetLine()
+	col := ctx.GetStart().GetColumn()
+
+	node.setPos(line, col)
 }
 
 // exp
@@ -50,6 +60,7 @@ type ECase struct {
 type EBinary interface {
 	Exp
 	eBinary()
+	setExps(Exp, Exp)
 }
 
 type BaseEBinary struct {
@@ -59,6 +70,11 @@ type BaseEBinary struct {
 }
 
 func (*BaseEBinary) eBinary() {}
+
+func (e *BaseEBinary) setExps(e1 Exp, e2 Exp) {
+	e.e1 = e1
+	e.e2 = e2
+}
 
 type EMul struct {
 	BaseEBinary

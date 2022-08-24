@@ -12,7 +12,7 @@ func main() {
 	spew.Config.Indent = "  "
 
 	// Setup the input
-	is := antlr.NewInputStream("1 / 2 * 3")
+	is := antlr.NewInputStream("case x of {y -> 1; Just \"adf\" 5 -> 0}")
 
 	// Create the Lexer
 	lexer := parser.NewLanguageLexer(is)

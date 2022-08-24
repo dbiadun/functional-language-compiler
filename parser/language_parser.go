@@ -974,8 +974,6 @@ func (s *FArgContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 
 type FAppContext struct {
 	*FexpContext
-	fun IFexpContext
-	arg IAexpContext
 }
 
 func NewFAppContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *FAppContext {
@@ -987,14 +985,6 @@ func NewFAppContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *FAppConte
 
 	return p
 }
-
-func (s *FAppContext) GetFun() IFexpContext { return s.fun }
-
-func (s *FAppContext) GetArg() IAexpContext { return s.arg }
-
-func (s *FAppContext) SetFun(v IFexpContext) { s.fun = v }
-
-func (s *FAppContext) SetArg(v IAexpContext) { s.arg = v }
 
 func (s *FAppContext) GetRuleContext() antlr.RuleContext {
 	return s
@@ -1110,8 +1100,6 @@ func (p *LanguageParser) fexp(_p int) (localctx IFexpContext) {
 			}
 			_prevctx = localctx
 			localctx = NewFAppContext(p, NewFexpContext(p, _parentctx, _parentState))
-			localctx.(*FAppContext).fun = _prevctx
-
 			p.PushNewRecursionContext(localctx, _startState, LanguageParserRULE_fexp)
 			p.SetState(46)
 
@@ -1120,10 +1108,7 @@ func (p *LanguageParser) fexp(_p int) (localctx IFexpContext) {
 			}
 			{
 				p.SetState(47)
-
-				var _x = p.Aexp()
-
-				localctx.(*FAppContext).arg = _x
+				p.Aexp()
 			}
 
 		}

@@ -16,7 +16,7 @@ OF: 'of';
 ARROW: '->';
 INT: [0-9]+;
 CHAR: '\''.'\'';
-STRING: '"'.'"';
+STRING: '"'.*?'"';
 VARID: [a-z][a-zA-Z0-9_]*;
 CONID: [A-Z][a-zA-Z0-9_]*;
 WHITESPACE: [ \r\n\t]+ -> skip;
