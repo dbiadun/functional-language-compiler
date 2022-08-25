@@ -1,8 +1,11 @@
 package main
 
+import "log"
+
 type TypeChecker struct {
-	types   map[string]*FunType
-	constrs map[string]*ConstrInfo
+	types        map[string]*FunType    // types of used functions and variables
+	constrs      map[string]*ConstrInfo // all defined constructors
+	definedTypes map[string]*DataType   // all defined types
 }
 
 type ConstrInfo struct {
@@ -11,6 +14,11 @@ type ConstrInfo struct {
 }
 
 type TypeCheckResult struct {
+}
+
+func (*TypeChecker) errFatal(v ASTNode, s string) {
+	line, col := v.getPos()
+	log.Fatalf("TypeChecker error at line %d, column %d: %s\n", line, col, s)
 }
 
 func (c *TypeChecker) checkTopDecls(v TopDecls) *TypeCheckResult {

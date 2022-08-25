@@ -26,5 +26,8 @@ func main() {
 
 	ast := p.Start().Accept(visitor).(*TopDeclsList)
 
+	//typeChecker := new(TypeChecker)
+	//typeChecker.checkTopDecls(ast)
+
 	spew.Dump(ast)
 }
