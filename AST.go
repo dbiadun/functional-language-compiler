@@ -33,6 +33,259 @@ func (node *BaseASTNode) setPosFromCtx(ctx antlr.ParserRuleContext) {
 	node.setPos(line, col)
 }
 
+// topdecls
+
+type TopDecls interface {
+	ASTNode
+	topDecls()
+}
+
+type BaseTopDecls struct {
+	BaseASTNode
+}
+
+func (*BaseTopDecls) topDecls() {}
+
+type TopDeclsList struct {
+	BaseTopDecls
+	decls []TopDecl
+}
+
+// topdecl
+
+type TopDecl interface {
+	ASTNode
+	topDecl()
+}
+
+type BaseTopDecl struct {
+	BaseASTNode
+}
+
+func (*BaseTopDecl) topDecl() {}
+
+type DataTopDecl struct {
+	BaseTopDecl
+	t       SimpleType
+	constrs Constrs
+}
+
+type FunTopDecl struct {
+	BaseTopDecl
+	decl Decl
+}
+
+// simpletype
+
+type SimpleType interface {
+	ASTNode
+	simpleType()
+}
+
+type BaseSimpleType struct {
+	BaseASTNode
+}
+
+func (*BaseSimpleType) simpleType() {}
+
+type DataType struct {
+	BaseSimpleType
+	constr string
+	vars   []string
+}
+
+// constrs
+
+type Constrs interface {
+	ASTNode
+	constrs()
+}
+
+type BaseConstrs struct {
+	BaseASTNode
+}
+
+func (*BaseConstrs) constrs() {}
+
+type ConstrList struct {
+	BaseConstrs
+	defs []ConstrDef
+}
+
+// constrdef
+
+type ConstrDef interface {
+	ASTNode
+	constrDef()
+}
+
+type BaseConstrDef struct {
+	BaseASTNode
+}
+
+func (*BaseConstrDef) constrDef() {}
+
+type ConstrType struct {
+	BaseConstrDef
+	constr string
+	args   []AType
+}
+
+// decl
+
+type Decl interface {
+	ASTNode
+	decl()
+}
+
+type BaseDecl struct {
+	BaseASTNode
+}
+
+func (*BaseDecl) decl() {}
+
+type FunTypeDecl struct {
+	BaseDecl
+	d GenDecl
+}
+
+type FunDecl struct {
+	BaseDecl
+	lhs FunLhs
+	rhs Rhs
+}
+
+type VarDecl struct {
+	BaseDecl
+	pat Pat
+	rhs Rhs
+}
+
+// gendecl
+
+type GenDecl interface {
+	ASTNode
+	genDecl()
+}
+
+type BaseGenDecl struct {
+	BaseASTNode
+}
+
+func (*BaseGenDecl) genDecl() {}
+
+type TypeSignature struct {
+	BaseGenDecl
+	vars []string
+	t    Type
+}
+
+// type
+
+type Type interface {
+	ASTNode
+	type_()
+}
+
+type BaseType struct {
+	BaseASTNode
+}
+
+func (*BaseType) type_() {}
+
+type FunType struct {
+	BaseType
+	types []BType
+}
+
+// btype
+
+type BType interface {
+	ASTNode
+	bType()
+}
+
+type BaseBType struct {
+	BaseASTNode
+}
+
+func (*BaseBType) bType() {}
+
+type TypeApp struct {
+	BaseBType
+	types []AType
+}
+
+// atype
+
+type AType interface {
+	ASTNode
+	aType()
+}
+
+type BaseAType struct {
+	BaseASTNode
+}
+
+func (*BaseAType) aType() {}
+
+type ConType struct {
+	BaseAType
+	id string
+}
+
+type VarType struct {
+	BaseAType
+	id string
+}
+
+type TupleType struct {
+	BaseAType
+	types []Type
+}
+
+type ParenType struct {
+	BaseAType
+	t Type
+}
+
+// funlhs
+
+type FunLhs interface {
+	ASTNode
+	funLhs()
+}
+
+type BaseFunLhs struct {
+	BaseASTNode
+}
+
+func (*BaseFunLhs) funLhs() {}
+
+type DeclLhs struct {
+	BaseFunLhs
+	fun  string
+	args []APat
+}
+
+// rhs
+
+type Rhs interface {
+	ASTNode
+	rhs()
+}
+
+type BaseRhs struct {
+	BaseASTNode
+}
+
+func (*BaseRhs) rhs() {}
+
+type DeclExp struct {
+	BaseRhs
+	e Exp
+}
+
 // exp
 
 type Exp interface {

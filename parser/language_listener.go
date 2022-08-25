@@ -11,6 +11,63 @@ type LanguageListener interface {
 	// EnterStart is called when entering the start production.
 	EnterStart(c *StartContext)
 
+	// EnterTopDeclsList is called when entering the TopDeclsList production.
+	EnterTopDeclsList(c *TopDeclsListContext)
+
+	// EnterDataTopDecl is called when entering the DataTopDecl production.
+	EnterDataTopDecl(c *DataTopDeclContext)
+
+	// EnterFunTopDecl is called when entering the FunTopDecl production.
+	EnterFunTopDecl(c *FunTopDeclContext)
+
+	// EnterDataType is called when entering the DataType production.
+	EnterDataType(c *DataTypeContext)
+
+	// EnterConstrList is called when entering the ConstrList production.
+	EnterConstrList(c *ConstrListContext)
+
+	// EnterConstrType is called when entering the ConstrType production.
+	EnterConstrType(c *ConstrTypeContext)
+
+	// EnterFunTypeDecl is called when entering the FunTypeDecl production.
+	EnterFunTypeDecl(c *FunTypeDeclContext)
+
+	// EnterFunDecl is called when entering the FunDecl production.
+	EnterFunDecl(c *FunDeclContext)
+
+	// EnterVarDecl is called when entering the VarDecl production.
+	EnterVarDecl(c *VarDeclContext)
+
+	// EnterTypeSignature is called when entering the TypeSignature production.
+	EnterTypeSignature(c *TypeSignatureContext)
+
+	// EnterVarList is called when entering the VarList production.
+	EnterVarList(c *VarListContext)
+
+	// EnterFunType is called when entering the FunType production.
+	EnterFunType(c *FunTypeContext)
+
+	// EnterTypeApp is called when entering the TypeApp production.
+	EnterTypeApp(c *TypeAppContext)
+
+	// EnterConType is called when entering the ConType production.
+	EnterConType(c *ConTypeContext)
+
+	// EnterVarType is called when entering the VarType production.
+	EnterVarType(c *VarTypeContext)
+
+	// EnterTupleType is called when entering the TupleType production.
+	EnterTupleType(c *TupleTypeContext)
+
+	// EnterParenType is called when entering the ParenType production.
+	EnterParenType(c *ParenTypeContext)
+
+	// EnterDeclLhs is called when entering the DeclLhs production.
+	EnterDeclLhs(c *DeclLhsContext)
+
+	// EnterDeclExp is called when entering the DeclExp production.
+	EnterDeclExp(c *DeclExpContext)
+
 	// EnterEMulDiv is called when entering the EMulDiv production.
 	EnterEMulDiv(c *EMulDivContext)
 
@@ -76,6 +133,63 @@ type LanguageListener interface {
 
 	// ExitStart is called when exiting the start production.
 	ExitStart(c *StartContext)
+
+	// ExitTopDeclsList is called when exiting the TopDeclsList production.
+	ExitTopDeclsList(c *TopDeclsListContext)
+
+	// ExitDataTopDecl is called when exiting the DataTopDecl production.
+	ExitDataTopDecl(c *DataTopDeclContext)
+
+	// ExitFunTopDecl is called when exiting the FunTopDecl production.
+	ExitFunTopDecl(c *FunTopDeclContext)
+
+	// ExitDataType is called when exiting the DataType production.
+	ExitDataType(c *DataTypeContext)
+
+	// ExitConstrList is called when exiting the ConstrList production.
+	ExitConstrList(c *ConstrListContext)
+
+	// ExitConstrType is called when exiting the ConstrType production.
+	ExitConstrType(c *ConstrTypeContext)
+
+	// ExitFunTypeDecl is called when exiting the FunTypeDecl production.
+	ExitFunTypeDecl(c *FunTypeDeclContext)
+
+	// ExitFunDecl is called when exiting the FunDecl production.
+	ExitFunDecl(c *FunDeclContext)
+
+	// ExitVarDecl is called when exiting the VarDecl production.
+	ExitVarDecl(c *VarDeclContext)
+
+	// ExitTypeSignature is called when exiting the TypeSignature production.
+	ExitTypeSignature(c *TypeSignatureContext)
+
+	// ExitVarList is called when exiting the VarList production.
+	ExitVarList(c *VarListContext)
+
+	// ExitFunType is called when exiting the FunType production.
+	ExitFunType(c *FunTypeContext)
+
+	// ExitTypeApp is called when exiting the TypeApp production.
+	ExitTypeApp(c *TypeAppContext)
+
+	// ExitConType is called when exiting the ConType production.
+	ExitConType(c *ConTypeContext)
+
+	// ExitVarType is called when exiting the VarType production.
+	ExitVarType(c *VarTypeContext)
+
+	// ExitTupleType is called when exiting the TupleType production.
+	ExitTupleType(c *TupleTypeContext)
+
+	// ExitParenType is called when exiting the ParenType production.
+	ExitParenType(c *ParenTypeContext)
+
+	// ExitDeclLhs is called when exiting the DeclLhs production.
+	ExitDeclLhs(c *DeclLhsContext)
+
+	// ExitDeclExp is called when exiting the DeclExp production.
+	ExitDeclExp(c *DeclExpContext)
 
 	// ExitEMulDiv is called when exiting the EMulDiv production.
 	ExitEMulDiv(c *EMulDivContext)

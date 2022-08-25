@@ -11,6 +11,63 @@ type LanguageVisitor interface {
 	// Visit a parse tree produced by LanguageParser#start.
 	VisitStart(ctx *StartContext) interface{}
 
+	// Visit a parse tree produced by LanguageParser#TopDeclsList.
+	VisitTopDeclsList(ctx *TopDeclsListContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#DataTopDecl.
+	VisitDataTopDecl(ctx *DataTopDeclContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#FunTopDecl.
+	VisitFunTopDecl(ctx *FunTopDeclContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#DataType.
+	VisitDataType(ctx *DataTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#ConstrList.
+	VisitConstrList(ctx *ConstrListContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#ConstrType.
+	VisitConstrType(ctx *ConstrTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#FunTypeDecl.
+	VisitFunTypeDecl(ctx *FunTypeDeclContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#FunDecl.
+	VisitFunDecl(ctx *FunDeclContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#VarDecl.
+	VisitVarDecl(ctx *VarDeclContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#TypeSignature.
+	VisitTypeSignature(ctx *TypeSignatureContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#VarList.
+	VisitVarList(ctx *VarListContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#FunType.
+	VisitFunType(ctx *FunTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#TypeApp.
+	VisitTypeApp(ctx *TypeAppContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#ConType.
+	VisitConType(ctx *ConTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#VarType.
+	VisitVarType(ctx *VarTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#TupleType.
+	VisitTupleType(ctx *TupleTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#ParenType.
+	VisitParenType(ctx *ParenTypeContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#DeclLhs.
+	VisitDeclLhs(ctx *DeclLhsContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#DeclExp.
+	VisitDeclExp(ctx *DeclExpContext) interface{}
+
 	// Visit a parse tree produced by LanguageParser#EMulDiv.
 	VisitEMulDiv(ctx *EMulDivContext) interface{}
 

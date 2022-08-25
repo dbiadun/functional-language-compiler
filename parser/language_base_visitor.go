@@ -12,6 +12,82 @@ func (v *BaseLanguageVisitor) VisitStart(ctx *StartContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseLanguageVisitor) VisitTopDeclsList(ctx *TopDeclsListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitDataTopDecl(ctx *DataTopDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitFunTopDecl(ctx *FunTopDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitDataType(ctx *DataTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitConstrList(ctx *ConstrListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitConstrType(ctx *ConstrTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitFunTypeDecl(ctx *FunTypeDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitFunDecl(ctx *FunDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitVarDecl(ctx *VarDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitTypeSignature(ctx *TypeSignatureContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitVarList(ctx *VarListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitFunType(ctx *FunTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitTypeApp(ctx *TypeAppContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitConType(ctx *ConTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitVarType(ctx *VarTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitTupleType(ctx *TupleTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitParenType(ctx *ParenTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitDeclLhs(ctx *DeclLhsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitDeclExp(ctx *DeclExpContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseLanguageVisitor) VisitEMulDiv(ctx *EMulDivContext) interface{} {
 	return v.VisitChildren(ctx)
 }

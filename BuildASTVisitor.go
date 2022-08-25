@@ -13,7 +13,268 @@ type BuildASTVisitor struct {
 }
 
 func (v *BuildASTVisitor) VisitStart(ctx *parser.StartContext) interface{} {
-	return ctx.Exp().Accept(v)
+	return ctx.Topdecls().Accept(v)
+}
+
+// topdecls
+
+func (v *BuildASTVisitor) VisitTopDeclsList(ctx *parser.TopDeclsListContext) interface{} {
+	r := new(TopDeclsList)
+	r.setPosFromCtx(ctx)
+	r.decls = []TopDecl{}
+
+	trees := ctx.AllTopdecl()
+
+	for _, tree := range trees {
+		decl := tree.Accept(v).(TopDecl)
+		r.decls = append(r.decls, decl)
+	}
+
+	return r
+}
+
+// topdecl
+
+func (v *BuildASTVisitor) VisitDataTopDecl(ctx *parser.DataTopDeclContext) interface{} {
+	r := new(DataTopDecl)
+	r.setPosFromCtx(ctx)
+
+	r.t = ctx.Simpletype().Accept(v).(SimpleType)
+	r.constrs = ctx.Constrs().Accept(v).(Constrs)
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitFunTopDecl(ctx *parser.FunTopDeclContext) interface{} {
+	r := new(FunTopDecl)
+	r.setPosFromCtx(ctx)
+
+	r.decl = ctx.Decl().Accept(v).(Decl)
+
+	return r
+}
+
+// simpletype
+
+func (v *BuildASTVisitor) VisitDataType(ctx *parser.DataTypeContext) interface{} {
+	r := new(DataType)
+	r.setPosFromCtx(ctx)
+
+	r.constr = ctx.CONID().GetText()
+	r.vars = []string{}
+
+	vars := ctx.AllVARID()
+
+	for _, var_ := range vars {
+		r.vars = append(r.vars, var_.GetText())
+	}
+
+	return r
+}
+
+// constrs
+
+func (v *BuildASTVisitor) VisitConstrList(ctx *parser.ConstrListContext) interface{} {
+	r := new(ConstrList)
+	r.setPosFromCtx(ctx)
+
+	trees := ctx.AllConstrdef()
+	r.defs = []ConstrDef{}
+
+	for _, tree := range trees {
+		def := tree.Accept(v).(ConstrDef)
+		r.defs = append(r.defs, def)
+	}
+
+	return r
+}
+
+// constrdef
+
+func (v *BuildASTVisitor) VisitConstrType(ctx *parser.ConstrTypeContext) interface{} {
+	r := new(ConstrType)
+	r.setPosFromCtx(ctx)
+
+	r.constr = ctx.CONID().GetText()
+	r.args = []AType{}
+
+	trees := ctx.AllAtype()
+
+	for _, tree := range trees {
+		arg := tree.Accept(v).(AType)
+		r.args = append(r.args, arg)
+	}
+
+	return r
+}
+
+// decl
+
+func (v *BuildASTVisitor) VisitFunTypeDecl(ctx *parser.FunTypeDeclContext) interface{} {
+	r := new(FunTypeDecl)
+	r.setPosFromCtx(ctx)
+
+	r.d = ctx.Gendecl().Accept(v).(GenDecl)
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitFunDecl(ctx *parser.FunDeclContext) interface{} {
+	r := new(FunDecl)
+	r.setPosFromCtx(ctx)
+
+	r.lhs = ctx.Funlhs().Accept(v).(FunLhs)
+	r.rhs = ctx.Rhs().Accept(v).(Rhs)
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitVarDecl(ctx *parser.VarDeclContext) interface{} {
+	r := new(VarDecl)
+	r.setPosFromCtx(ctx)
+
+	r.pat = ctx.Pat().Accept(v).(Pat)
+	r.rhs = ctx.Rhs().Accept(v).(Rhs)
+
+	return r
+}
+
+// gendecl
+
+func (v *BuildASTVisitor) VisitTypeSignature(ctx *parser.TypeSignatureContext) interface{} {
+	r := new(TypeSignature)
+	r.setPosFromCtx(ctx)
+
+	r.vars = ctx.Vars().Accept(v).([]string)
+	r.t = ctx.Type().Accept(v).(Type)
+
+	return r
+}
+
+// vars
+
+func (v *BuildASTVisitor) VisitVarList(ctx *parser.VarListContext) interface{} {
+	r := []string{}
+
+	vars := ctx.AllVARID()
+
+	for _, v := range vars {
+		v := v.GetText()
+		r = append(r, v)
+	}
+
+	return r
+}
+
+// type
+
+func (v *BuildASTVisitor) VisitFunType(ctx *parser.FunTypeContext) interface{} {
+	r := new(FunType)
+	r.setPosFromCtx(ctx)
+
+	r.types = []BType{}
+
+	trees := ctx.AllBtype()
+
+	for _, tree := range trees {
+		bType := tree.Accept(v).(BType)
+		r.types = append(r.types, bType)
+	}
+
+	return r
+}
+
+// btype
+
+func (v *BuildASTVisitor) VisitTypeApp(ctx *parser.TypeAppContext) interface{} {
+	r := new(TypeApp)
+	r.setPosFromCtx(ctx)
+
+	r.types = []AType{}
+
+	trees := ctx.AllAtype()
+
+	for _, tree := range trees {
+		aType := tree.Accept(v).(AType)
+		r.types = append(r.types, aType)
+	}
+
+	return r
+}
+
+// atype
+
+func (v *BuildASTVisitor) VisitConType(ctx *parser.ConTypeContext) interface{} {
+	r := new(ConType)
+	r.setPosFromCtx(ctx)
+
+	r.id = ctx.CONID().GetText()
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitVarType(ctx *parser.VarTypeContext) interface{} {
+	r := new(VarType)
+	r.setPosFromCtx(ctx)
+
+	r.id = ctx.VARID().GetText()
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitTupleType(ctx *parser.TupleTypeContext) interface{} {
+	r := new(TupleType)
+	r.setPosFromCtx(ctx)
+
+	r.types = []Type{}
+
+	trees := ctx.AllType()
+
+	for _, tree := range trees {
+		t := tree.Accept(v).(Type)
+		r.types = append(r.types, t)
+	}
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitParenType(ctx *parser.ParenTypeContext) interface{} {
+	r := new(ParenType)
+	r.setPosFromCtx(ctx)
+
+	r.t = ctx.Type().Accept(v).(Type)
+
+	return r
+}
+
+// funlhs
+
+func (v *BuildASTVisitor) VisitDeclLhs(ctx *parser.DeclLhsContext) interface{} {
+	r := new(DeclLhs)
+	r.setPosFromCtx(ctx)
+
+	r.fun = ctx.VARID().GetText()
+	r.args = []APat{}
+
+	trees := ctx.AllApat()
+
+	for _, tree := range trees {
+		arg := tree.Accept(v).(APat)
+		r.args = append(r.args, arg)
+	}
+
+	return r
+}
+
+// rhs
+
+func (v *BuildASTVisitor) VisitDeclExp(ctx *parser.DeclExpContext) interface{} {
+	r := new(DeclExp)
+	r.setPosFromCtx(ctx)
+
+	r.e = ctx.Exp().Accept(v).(Exp)
+
+	return r
 }
 
 // exp

@@ -27,6 +27,120 @@ func (s *BaseLanguageListener) EnterStart(ctx *StartContext) {}
 // ExitStart is called when production start is exited.
 func (s *BaseLanguageListener) ExitStart(ctx *StartContext) {}
 
+// EnterTopDeclsList is called when production TopDeclsList is entered.
+func (s *BaseLanguageListener) EnterTopDeclsList(ctx *TopDeclsListContext) {}
+
+// ExitTopDeclsList is called when production TopDeclsList is exited.
+func (s *BaseLanguageListener) ExitTopDeclsList(ctx *TopDeclsListContext) {}
+
+// EnterDataTopDecl is called when production DataTopDecl is entered.
+func (s *BaseLanguageListener) EnterDataTopDecl(ctx *DataTopDeclContext) {}
+
+// ExitDataTopDecl is called when production DataTopDecl is exited.
+func (s *BaseLanguageListener) ExitDataTopDecl(ctx *DataTopDeclContext) {}
+
+// EnterFunTopDecl is called when production FunTopDecl is entered.
+func (s *BaseLanguageListener) EnterFunTopDecl(ctx *FunTopDeclContext) {}
+
+// ExitFunTopDecl is called when production FunTopDecl is exited.
+func (s *BaseLanguageListener) ExitFunTopDecl(ctx *FunTopDeclContext) {}
+
+// EnterDataType is called when production DataType is entered.
+func (s *BaseLanguageListener) EnterDataType(ctx *DataTypeContext) {}
+
+// ExitDataType is called when production DataType is exited.
+func (s *BaseLanguageListener) ExitDataType(ctx *DataTypeContext) {}
+
+// EnterConstrList is called when production ConstrList is entered.
+func (s *BaseLanguageListener) EnterConstrList(ctx *ConstrListContext) {}
+
+// ExitConstrList is called when production ConstrList is exited.
+func (s *BaseLanguageListener) ExitConstrList(ctx *ConstrListContext) {}
+
+// EnterConstrType is called when production ConstrType is entered.
+func (s *BaseLanguageListener) EnterConstrType(ctx *ConstrTypeContext) {}
+
+// ExitConstrType is called when production ConstrType is exited.
+func (s *BaseLanguageListener) ExitConstrType(ctx *ConstrTypeContext) {}
+
+// EnterFunTypeDecl is called when production FunTypeDecl is entered.
+func (s *BaseLanguageListener) EnterFunTypeDecl(ctx *FunTypeDeclContext) {}
+
+// ExitFunTypeDecl is called when production FunTypeDecl is exited.
+func (s *BaseLanguageListener) ExitFunTypeDecl(ctx *FunTypeDeclContext) {}
+
+// EnterFunDecl is called when production FunDecl is entered.
+func (s *BaseLanguageListener) EnterFunDecl(ctx *FunDeclContext) {}
+
+// ExitFunDecl is called when production FunDecl is exited.
+func (s *BaseLanguageListener) ExitFunDecl(ctx *FunDeclContext) {}
+
+// EnterVarDecl is called when production VarDecl is entered.
+func (s *BaseLanguageListener) EnterVarDecl(ctx *VarDeclContext) {}
+
+// ExitVarDecl is called when production VarDecl is exited.
+func (s *BaseLanguageListener) ExitVarDecl(ctx *VarDeclContext) {}
+
+// EnterTypeSignature is called when production TypeSignature is entered.
+func (s *BaseLanguageListener) EnterTypeSignature(ctx *TypeSignatureContext) {}
+
+// ExitTypeSignature is called when production TypeSignature is exited.
+func (s *BaseLanguageListener) ExitTypeSignature(ctx *TypeSignatureContext) {}
+
+// EnterVarList is called when production VarList is entered.
+func (s *BaseLanguageListener) EnterVarList(ctx *VarListContext) {}
+
+// ExitVarList is called when production VarList is exited.
+func (s *BaseLanguageListener) ExitVarList(ctx *VarListContext) {}
+
+// EnterFunType is called when production FunType is entered.
+func (s *BaseLanguageListener) EnterFunType(ctx *FunTypeContext) {}
+
+// ExitFunType is called when production FunType is exited.
+func (s *BaseLanguageListener) ExitFunType(ctx *FunTypeContext) {}
+
+// EnterTypeApp is called when production TypeApp is entered.
+func (s *BaseLanguageListener) EnterTypeApp(ctx *TypeAppContext) {}
+
+// ExitTypeApp is called when production TypeApp is exited.
+func (s *BaseLanguageListener) ExitTypeApp(ctx *TypeAppContext) {}
+
+// EnterConType is called when production ConType is entered.
+func (s *BaseLanguageListener) EnterConType(ctx *ConTypeContext) {}
+
+// ExitConType is called when production ConType is exited.
+func (s *BaseLanguageListener) ExitConType(ctx *ConTypeContext) {}
+
+// EnterVarType is called when production VarType is entered.
+func (s *BaseLanguageListener) EnterVarType(ctx *VarTypeContext) {}
+
+// ExitVarType is called when production VarType is exited.
+func (s *BaseLanguageListener) ExitVarType(ctx *VarTypeContext) {}
+
+// EnterTupleType is called when production TupleType is entered.
+func (s *BaseLanguageListener) EnterTupleType(ctx *TupleTypeContext) {}
+
+// ExitTupleType is called when production TupleType is exited.
+func (s *BaseLanguageListener) ExitTupleType(ctx *TupleTypeContext) {}
+
+// EnterParenType is called when production ParenType is entered.
+func (s *BaseLanguageListener) EnterParenType(ctx *ParenTypeContext) {}
+
+// ExitParenType is called when production ParenType is exited.
+func (s *BaseLanguageListener) ExitParenType(ctx *ParenTypeContext) {}
+
+// EnterDeclLhs is called when production DeclLhs is entered.
+func (s *BaseLanguageListener) EnterDeclLhs(ctx *DeclLhsContext) {}
+
+// ExitDeclLhs is called when production DeclLhs is exited.
+func (s *BaseLanguageListener) ExitDeclLhs(ctx *DeclLhsContext) {}
+
+// EnterDeclExp is called when production DeclExp is entered.
+func (s *BaseLanguageListener) EnterDeclExp(ctx *DeclExpContext) {}
+
+// ExitDeclExp is called when production DeclExp is exited.
+func (s *BaseLanguageListener) ExitDeclExp(ctx *DeclExpContext) {}
+
 // EnterEMulDiv is called when production EMulDiv is entered.
 func (s *BaseLanguageListener) EnterEMulDiv(ctx *EMulDivContext) {}
 

@@ -5,12 +5,16 @@ MUL: '*';
 DIV: '/';
 ADD: '+';
 SUB: '-';
+ASSIGN: '=';
 PAREN_LEFT: '(';
 PAREN_RIGHT: ')';
 BRACE_LEFT: '{';
 BRACE_RIGHT: '}';
 COMMA: ',';
 SEMICOLON: ';';
+VERTICAL_BAR: '|';
+DOUBLE_COLON: '::';
+DATA: 'data';
 CASE: 'case';
 OF: 'of';
 ARROW: '->';
@@ -22,7 +26,65 @@ CONID: [A-Z][a-zA-Z0-9_]*;
 WHITESPACE: [ \r\n\t]+ -> skip;
 
 // Rules
-start : exp EOF;
+start : topdecls EOF;
+
+topdecls
+    : topdecl? (SEMICOLON topdecl)* # TopDeclsList
+    ;
+
+topdecl
+    : DATA simpletype ASSIGN constrs # DataTopDecl
+    | decl # FunTopDecl
+    ;
+
+simpletype
+    : CONID VARID* # DataType
+    ;
+
+constrs
+    : constrdef (VERTICAL_BAR constrdef)* # ConstrList
+    ;
+
+constrdef
+    : CONID atype* # ConstrType
+    ;
+
+decl
+    : gendecl # FunTypeDecl
+    | funlhs rhs # FunDecl
+    | pat rhs # VarDecl
+    ;
+
+gendecl
+    : vars DOUBLE_COLON type # TypeSignature
+    ;
+
+vars
+    : VARID (COMMA VARID)* # VarList
+    ;
+
+type
+    : btype (ARROW btype)* # FunType
+    ;
+
+btype
+    : atype+ # TypeApp
+    ;
+
+atype
+    : CONID # ConType
+    | VARID # VarType
+    | PAREN_LEFT type (COMMA type)+ PAREN_RIGHT # TupleType
+    | PAREN_LEFT type PAREN_RIGHT # ParenType
+    ;
+
+funlhs
+    : VARID apat+ # DeclLhs
+    ;
+
+rhs
+    : ASSIGN exp # DeclExp
+    ;
 
 exp
     : fexp # EFun
