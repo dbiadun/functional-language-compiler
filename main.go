@@ -22,8 +22,9 @@ func main() {
 	p := parser.NewLanguageParser(stream)
 
 	// Finally parse the expression
-	visitor := BuildASTVisitor{}
+	visitor := new(BuildASTVisitor)
 
-	x := p.Start().Accept(&visitor)
-	spew.Dump(x)
+	ast := p.Start().Accept(visitor).(*TopDeclsList)
+
+	spew.Dump(ast)
 }
