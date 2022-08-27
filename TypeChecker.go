@@ -1,19 +1,60 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
-type TypeChecker struct {
-	types        map[string]*FunType    // types of used functions and variables
-	constrs      map[string]*ConstrInfo // all defined constructors
-	definedTypes map[string]*DataType   // all defined types
-}
+////////////////////////////////////// CONTEXT ///////////////////////////////////////
 
 type ConstrInfo struct {
 	t       *DataType
 	constrT *ConstrType
 }
 
+type ContextData interface {
+	contextData()
+}
+
+func (*DataType) contextData() {}
+
+type void struct{}
+
+func (void) contextData() {}
+
+var voidMember void
+
+type DataTypeVars struct {
+	vars map[string]void
+}
+
+func (*DataTypeVars) contextData() {}
+
+const (
+	CurDataType      = iota // *DataType
+	CurDataTypeVars         // *DataTypeVars
+	TypesCheck              // void
+	GlobalNamesCheck        // void
+)
+
+/////////////////////////////////// TYPE_CHECKER /////////////////////////////////////
+
+type TypeChecker struct {
+	types        map[string]*FunType    // types of declared functions and variables
+	constrs      map[string]*ConstrInfo // all defined constructors
+	definedTypes map[string]*DataType   // all defined types
+	context      map[int]ContextData    // additional context
+}
+
 type TypeCheckResult struct {
+	t *FunType
+}
+
+func (c *TypeChecker) init() {
+	c.types = make(map[string]*FunType)
+	c.constrs = make(map[string]*ConstrInfo)
+	c.definedTypes = make(map[string]*DataType)
+	c.context = make(map[int]ContextData)
 }
 
 func (*TypeChecker) errFatal(v ASTNode, s string) {
@@ -21,19 +62,51 @@ func (*TypeChecker) errFatal(v ASTNode, s string) {
 	log.Fatalf("TypeChecker error at line %d, column %d: %s\n", line, col, s)
 }
 
+// The actual check
+
 func (c *TypeChecker) checkTopDecls(v TopDecls) *TypeCheckResult {
+	switch v := v.(type) {
+	case *TopDeclsList:
+		c.context[TypesCheck] = voidMember
+		c.checkTopDeclsList(v)
+		delete(c.context, TypesCheck)
+
+		c.context[GlobalNamesCheck] = voidMember
+		c.checkTopDeclsList(v)
+		delete(c.context, GlobalNamesCheck)
+
+		return c.checkTopDeclsList(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkTopDeclsList(v *TopDeclsList) *TypeCheckResult {
+	for _, decl := range v.decls {
+		c.checkTopDecl(decl)
+	}
+
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkTopDecl(v TopDecl) *TypeCheckResult {
+	switch v := v.(type) {
+	case *DataTopDecl:
+		return c.checkDataTopDecl(v)
+	case *FunTopDecl:
+		return c.checkFunTopDecl(v)
+	}
+
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkDataTopDecl(v *DataTopDecl) *TypeCheckResult {
+	c.checkSimpleType(v.t)
+
+	_, globalNamesCheck := c.context[GlobalNamesCheck]
+	if globalNamesCheck {
+		c.checkConstrs(v.constrs)
+	}
+
 	return &TypeCheckResult{}
 }
 
@@ -42,26 +115,178 @@ func (c *TypeChecker) checkFunTopDecl(v *FunTopDecl) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkSimpleType(v SimpleType) *TypeCheckResult {
+	switch v := v.(type) {
+
+	// Should place a *DataType at CurDataType field of context
+	// and a *DataTypeVars at CurDataTypeVars field
+
+	case *DataType:
+		return c.checkDataType(v)
+	}
+
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkDataType(v *DataType) *TypeCheckResult {
+	_, typesCheck := c.context[TypesCheck]
+	_, globalNamesCheck := c.context[GlobalNamesCheck]
+
+	if typesCheck {
+		_, ok := c.definedTypes[v.constr]
+		if ok {
+			c.errFatal(v, fmt.Sprintf("Type '%s' already defined", v.constr))
+		}
+		c.definedTypes[v.constr] = v
+	}
+
+	if globalNamesCheck {
+		c.context[CurDataType] = v
+
+		vars := new(DataTypeVars)
+		vars.vars = make(map[string]void)
+		for _, curVar := range v.vars {
+			_, ok := vars.vars[curVar]
+			if ok {
+				c.errFatal(v, fmt.Sprintf("Conflicting definitions for '%s'", curVar))
+			}
+			vars.vars[curVar] = voidMember
+		}
+		c.context[CurDataTypeVars] = vars
+	}
+
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkConstrs(v Constrs) *TypeCheckResult {
+	switch v := v.(type) {
+	case *ConstrList:
+		return c.checkConstrList(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkConstrList(v *ConstrList) *TypeCheckResult {
+	for _, def := range v.defs {
+		c.checkConstrDef(def)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkConstrDef(v ConstrDef) *TypeCheckResult {
+	switch v := v.(type) {
+	case *ConstrType:
+		return c.checkConstrType(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkConstrType(v *ConstrType) *TypeCheckResult {
+	_, ok := c.constrs[v.constr]
+	if ok {
+		c.errFatal(v, fmt.Sprintf("Constructor '%s' already defined", v.constr))
+	}
+
+	for _, arg := range v.args {
+		// argsCount is equal to 0, because type with parameters would be enclosed in parentheses
+		c.checkConstrDefAType(arg, 0)
+	}
+
+	c.constrs[v.constr] = &ConstrInfo{c.context[CurDataType].(*DataType), v}
+
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefType(v Type) *TypeCheckResult {
+	switch v := v.(type) {
+	case *FunType:
+		c.checkConstrDefFunType(v)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefFunType(v *FunType) *TypeCheckResult {
+	for _, t := range v.types {
+		c.checkConstrDefBType(t)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefBType(v BType) *TypeCheckResult {
+	switch v := v.(type) {
+	case *TypeApp:
+		c.checkConstrDefTypeApp(v)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefTypeApp(v *TypeApp) *TypeCheckResult {
+	for i, t := range v.types {
+		argsCount := 0
+		if i == 0 {
+			// The first type has parameters (the rest of the types), so we need to check if its arity is valid
+			argsCount = len(v.types) - 1
+		}
+		c.checkConstrDefAType(t, argsCount)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefAType(v AType, argsCount int) *TypeCheckResult {
+	switch v := v.(type) {
+	case *ConType:
+		c.checkConstrDefConType(v, argsCount)
+	case *VarType:
+		c.checkConstrDefVarType(v, argsCount)
+	case *TupleType:
+		c.checkConstrDefTupleType(v, argsCount)
+	case *ParenType:
+		c.checkConstrDefParenType(v, argsCount)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefConType(v *ConType, argsCount int) *TypeCheckResult {
+	c.checkDataTypeExistence(v, v.id, argsCount)
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefVarType(v *VarType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, fmt.Sprintf("Type '%s' can't have any parameters", v.id))
+	}
+
+	vars, ok := c.context[CurDataTypeVars]
+
+	if ok {
+		varsSet := vars.(*DataTypeVars).vars
+		_, ok = varsSet[v.id]
+		if ok {
+			return &TypeCheckResult{}
+		}
+	}
+
+	c.errFatal(v, fmt.Sprintf("Type '%s' not defined", v.id))
+
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefTupleType(v *TupleType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, "Tuple type can't have any parameters")
+	}
+
+	for _, t := range v.types {
+		c.checkConstrDefType(t)
+	}
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefParenType(v *ParenType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, "Parenthesis type can't have any parameters")
+	}
+
+	c.checkConstrDefType(v.t)
 	return &TypeCheckResult{}
 }
 
@@ -250,5 +475,21 @@ func (c *TypeChecker) checkChar(v *Char) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkString(v *String) *TypeCheckResult {
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkDataTypeExistence(v ASTNode, constr string, argsCount int) *TypeCheckResult {
+	t, ok := c.definedTypes[constr]
+
+	if !ok {
+		c.errFatal(v, fmt.Sprintf("Type '%s' not defined", constr))
+	}
+
+	// We check the parameters count of the type
+	actualArity := len(t.vars)
+	if argsCount != actualArity {
+		c.errFatal(v, fmt.Sprintf("Type '%s' needs %d parameters", constr, actualArity))
+	}
+
 	return &TypeCheckResult{}
 }

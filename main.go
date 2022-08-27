@@ -12,7 +12,7 @@ func main() {
 	spew.Config.Indent = "  "
 
 	// Setup the input
-	is := antlr.NewInputStream("five = 5")
+	is := antlr.NewInputStream("data Maybe a = Just a | Nothing")
 
 	// Create the Lexer
 	lexer := parser.NewLanguageLexer(is)
@@ -26,8 +26,10 @@ func main() {
 
 	ast := p.Start().Accept(visitor).(*TopDeclsList)
 
-	//typeChecker := new(TypeChecker)
-	//typeChecker.checkTopDecls(ast)
+	typeChecker := new(TypeChecker)
+	typeChecker.init()
+	typeChecker.checkTopDecls(ast)
 
-	spew.Dump(ast)
+	spew.Dump(typeChecker)
+	//spew.Dump(ast)
 }
