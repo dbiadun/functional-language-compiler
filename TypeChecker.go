@@ -30,11 +30,20 @@ type DataTypeVars struct {
 
 func (*DataTypeVars) contextData() {}
 
+type ParameterTypes struct {
+	types map[string]void
+}
+
+func (*ParameterTypes) contextData() {}
+
 const (
-	CurDataType      = iota // *DataType
-	CurDataTypeVars         // *DataTypeVars
-	TypesCheck              // void
-	GlobalNamesCheck        // void
+	CurDataType       = iota // *DataType
+	CurDataTypeVars          // *DataTypeVars
+	CurParameterTypes        // *ParameterTypes
+	LastArrowType            // void
+	TypesCheck               // void
+	GlobalNamesCheck         // void
+	LastCheck                // void
 )
 
 /////////////////////////////////// TYPE_CHECKER /////////////////////////////////////
@@ -75,7 +84,9 @@ func (c *TypeChecker) checkTopDecls(v TopDecls) *TypeCheckResult {
 		c.checkTopDeclsList(v)
 		delete(c.context, GlobalNamesCheck)
 
-		return c.checkTopDeclsList(v)
+		c.context[LastCheck] = voidMember
+		c.checkTopDeclsList(v)
+		delete(c.context, LastCheck)
 	}
 	return &TypeCheckResult{}
 }
@@ -111,7 +122,7 @@ func (c *TypeChecker) checkDataTopDecl(v *DataTopDecl) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkFunTopDecl(v *FunTopDecl) *TypeCheckResult {
-	return &TypeCheckResult{}
+	return c.checkDecl(v.decl)
 }
 
 func (c *TypeChecker) checkSimpleType(v SimpleType) *TypeCheckResult {
@@ -291,14 +302,35 @@ func (c *TypeChecker) checkConstrDefParenType(v *ParenType, argsCount int) *Type
 }
 
 func (c *TypeChecker) checkDecl(v Decl) *TypeCheckResult {
+	switch v := v.(type) {
+	case *FunTypeDecl:
+		c.checkFunTypeDecl(v)
+	case *FunDecl:
+		c.checkFunDecl(v)
+	case *VarDecl:
+		c.checkVarDecl(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkFunTypeDecl(v *FunTypeDecl) *TypeCheckResult {
+	_, globalNamesCheck := c.context[GlobalNamesCheck]
+
+	if !globalNamesCheck {
+		return &TypeCheckResult{}
+	}
+
+	c.checkGenDecl(v.d)
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkFunDecl(v *FunDecl) *TypeCheckResult {
+	_, globalNamesCheck := c.context[GlobalNamesCheck]
+
+	if !globalNamesCheck {
+		return &TypeCheckResult{}
+	}
+
 	return &TypeCheckResult{}
 }
 
@@ -307,46 +339,127 @@ func (c *TypeChecker) checkVarDecl(v *VarDecl) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkGenDecl(v GenDecl) *TypeCheckResult {
+	switch v := v.(type) {
+	case *TypeSignature:
+		c.checkTypeSignature(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkTypeSignature(v *TypeSignature) *TypeCheckResult {
+	c.context[CurParameterTypes] = &ParameterTypes{make(map[string]void)}
+	c.context[LastArrowType] = voidMember
+	t := c.checkType(v.t).t
+
+	for _, curVar := range v.vars {
+		_, ok := c.types[curVar]
+		if ok {
+			c.errFatal(v, fmt.Sprintf("Type of '%s' already defined", curVar))
+		}
+
+		c.types[curVar] = t
+	}
+
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkType(v Type) *TypeCheckResult {
+	switch v := v.(type) {
+	case *FunType:
+		return c.checkFunType(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkFunType(v *FunType) *TypeCheckResult {
-	return &TypeCheckResult{}
+	_, lastArrowType := c.context[LastArrowType]
+	delete(c.context, LastArrowType)
+
+	for i, t := range v.types {
+		// We need to know if the type is after the last arrow to know if we need its parameter types defined
+		// We don't set LastArrowType on the last type always, because we want to guarantee that
+		// only the real last type in the whole type tree is set to last
+		if lastArrowType && i == len(v.types)-1 {
+			c.context[LastArrowType] = voidMember
+		}
+		c.checkBType(t)
+	}
+	return &TypeCheckResult{v}
 }
 
 func (c *TypeChecker) checkBType(v BType) *TypeCheckResult {
+	switch v := v.(type) {
+	case *TypeApp:
+		c.checkTypeApp(v)
+	}
 	return &TypeCheckResult{}
 }
 
 func (c *TypeChecker) checkTypeApp(v *TypeApp) *TypeCheckResult {
+	for i, t := range v.types {
+		argsCount := 0
+		if i == 0 {
+			argsCount = len(v.types) - 1
+		}
+		c.checkAType(t, argsCount)
+	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkAType(v AType) *TypeCheckResult {
+func (c *TypeChecker) checkAType(v AType, argsCount int) *TypeCheckResult {
+	switch v := v.(type) {
+	case *ConType:
+		c.checkConType(v, argsCount)
+	case *VarType:
+		c.checkVarType(v, argsCount)
+	case *TupleType:
+		c.checkTupleType(v, argsCount)
+	case *ParenType:
+		c.checkParenType(v, argsCount)
+	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkConType(v *ConType) *TypeCheckResult {
+func (c *TypeChecker) checkConType(v *ConType, argsCount int) *TypeCheckResult {
+	c.checkDataTypeExistence(v, v.id, argsCount)
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkVarType(v *VarType) *TypeCheckResult {
+func (c *TypeChecker) checkVarType(v *VarType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, fmt.Sprintf("Type '%s' can't have any parameters", v.id))
+	}
+
+	parameterTypes := c.context[CurParameterTypes].(*ParameterTypes).types
+
+	_, lastArrowType := c.context[LastArrowType]
+	if lastArrowType {
+		_, defined := parameterTypes[v.id]
+		if !defined {
+			c.errFatal(v, fmt.Sprintf("Type '%s' not defined", v.id))
+		}
+	} else {
+		parameterTypes[v.id] = voidMember
+	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkTupleType(v *TupleType) *TypeCheckResult {
+func (c *TypeChecker) checkTupleType(v *TupleType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, "Tuple type can't have any parameters")
+	}
+
+	for _, t := range v.types {
+		c.checkType(t)
+	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkParenType(v *ParenType) *TypeCheckResult {
+func (c *TypeChecker) checkParenType(v *ParenType, argsCount int) *TypeCheckResult {
+	if argsCount > 0 {
+		c.errFatal(v, "Parenthesis type can't have any parameters")
+	}
+	c.checkType(v.t)
 	return &TypeCheckResult{}
 }
 

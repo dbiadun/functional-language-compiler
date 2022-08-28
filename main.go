@@ -12,7 +12,7 @@ func main() {
 	spew.Config.Indent = "  "
 
 	// Setup the input
-	is := antlr.NewInputStream("data Maybe a = Just a | Nothing")
+	is := antlr.NewInputStream("data List a = List a (List a) | Empty; data Maybe a = Just a | Nothing; first :: List a -> Maybe a")
 
 	// Create the Lexer
 	lexer := parser.NewLanguageLexer(is)
