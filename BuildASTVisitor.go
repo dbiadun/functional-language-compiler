@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"functional-language-compiler/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"log"
@@ -505,6 +506,8 @@ func (v *BuildASTVisitor) VisitInt(ctx *parser.IntContext) interface{} {
 
 	if err == nil {
 		e.n = n
+	} else {
+		log.Fatalln(fmt.Sprintf("Error: '%s' is not a permitted integer", ctx.GetText()))
 	}
 
 	return e
