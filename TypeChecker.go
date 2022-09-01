@@ -16,8 +16,9 @@ type TypeChecker struct {
 	uniuqeNum    int                    // for unique numbers
 }
 
-type TypeCheckResult struct {
-	t *FunType
+type ConstrInfo struct {
+	t       *DataType
+	constrT *ConstrType
 }
 
 func (c *TypeChecker) init() {
@@ -39,25 +40,20 @@ func (c *TypeChecker) getNum() int {
 	return c.uniuqeNum
 }
 
-/////////////////////////////////// BUILTINS ///////////////////////////////////////
-
-func (c *TypeChecker) addBuiltins() {
-	intDataType := &DataType{constr: "Int", vars: []string{}}
-	c.definedTypes["Int"] = intDataType
-
-	charDataType := &DataType{constr: "Char", vars: []string{}}
-	c.definedTypes["Char"] = charDataType
-
-	stringDataType := &DataType{constr: "String", vars: []string{}}
-	c.definedTypes["String"] = stringDataType
-}
-
 ////////////////////////////////////// CONTEXT ///////////////////////////////////////
 
-type ConstrInfo struct {
-	t       *DataType
-	constrT *ConstrType
-}
+const (
+	CurDataType          = iota // *DataType
+	CurDataTypeVars             // *DataTypeVars
+	CurParameterTypes           // *ParameterTypes
+	CurChangeBackup             // *ChangeBackup
+	CurValidRhsType             // *FunType
+	CurTypeSubstitutions        // *TypeSubstitutions
+	LastArrowType               // void
+	TypesCheck                  // void
+	GlobalNamesCheck            // void
+	LastCheck                   // void
+)
 
 type ContextData interface {
 	contextData()
@@ -95,20 +91,36 @@ type TypeSubstitutions struct {
 
 func (*TypeSubstitutions) contextData() {}
 
-const (
-	CurDataType          = iota // *DataType
-	CurDataTypeVars             // *DataTypeVars
-	CurParameterTypes           // *ParameterTypes
-	CurChangeBackup             // *ChangeBackup
-	CurValidRhsType             // *FunType
-	CurTypeSubstitutions        // *TypeSubstitutions
-	LastArrowType               // void
-	TypesCheck                  // void
-	GlobalNamesCheck            // void
-	LastCheck                   // void
-)
+/////////////////////////////////// BUILTINS ///////////////////////////////////////
 
-// Changing types
+func (c *TypeChecker) addBuiltins() {
+	intDataType := &DataType{constr: "Int", vars: []string{}}
+	c.definedTypes["Int"] = intDataType
+
+	charDataType := &DataType{constr: "Char", vars: []string{}}
+	c.definedTypes["Char"] = charDataType
+
+	stringDataType := &DataType{constr: "String", vars: []string{}}
+	c.definedTypes["String"] = stringDataType
+}
+
+func getIntType() *FunType {
+	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Int"}}}}}
+}
+
+func getCharType() *FunType {
+	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Char"}}}}}
+}
+
+func getStringType() *FunType {
+	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "String"}}}}}
+}
+
+//////////////////////////////// TYPES CHANGING //////////////////////////////////////
+
+// Things used to modify the environment and later revert the modifications.
+// Useful, for example, when we get a new declared variable and we need to change
+// the type assigned to it for the time needed to process a subtree of the AST.
 
 type ChangeBackup struct {
 	changedTypes map[string]*FunType
@@ -151,12 +163,15 @@ func (c *TypeChecker) revertTypes(backup *ChangeBackup) {
 	}
 }
 
-// Operations on types
+/////////////////////////////////// TYPE OPERATIONS //////////////////////////////////////
 
 func (c *TypeChecker) detachTypes(parentNode ASTNode, funType *FunType, typesCount int) ([]*FunType, *FunType) {
+	// Detaches the first `typesCount` types from the function type
+
+	// We need to make sure that the type isn't wrapped in parentheses
 	c.reduceParens(funType)
 	if typesCount >= len(funType.types) {
-		c.errFatal(parentNode, "Too many values to match in the pattern")
+		c.errFatal(parentNode, "Too many arguments to match the function type")
 	}
 
 	var detachedTypes []*FunType
@@ -174,6 +189,8 @@ func (c *TypeChecker) detachTypes(parentNode ASTNode, funType *FunType, typesCou
 }
 
 func (c *TypeChecker) mergeTypes(parentNode ASTNode, funType *FunType, typesCount int) *FunType {
+	// Merges the last `typesCount` types in the function type
+
 	newFunType := &FunType{}
 	oldTypesCount := len(funType.types)
 	if typesCount > oldTypesCount {
@@ -196,7 +213,58 @@ func (c *TypeChecker) mergeTypes(parentNode ASTNode, funType *FunType, typesCoun
 	return newFunType
 }
 
+func (c *TypeChecker) reduceParens(v Type) {
+	// Reduces the unnecessary parentheses
+
+	var replacementBTypes []BType
+
+	funType := v.(*FunType)
+	for i, bType := range funType.types {
+		typeApp := bType.(*TypeApp)
+		for j, aType := range typeApp.types {
+			// First, we reduce recursively types within tuples and parens
+			_, ok := aType.(*TupleType)
+			if ok {
+				tupleType := aType.(*TupleType)
+				for _, t := range tupleType.types {
+					c.reduceParens(t)
+				}
+			}
+
+			_, ok = aType.(*ParenType)
+			if ok {
+				parenType := aType.(*ParenType)
+				c.reduceParens(parenType.t)
+				innerFunType := parenType.t.(*FunType)
+				if len(innerFunType.types) == 1 {
+					innerBType := innerFunType.types[0]
+					innerTypeApp := innerBType.(*TypeApp)
+					if len(innerTypeApp.types) == 1 {
+						// If type within parenthesis is just AType, we can put it directly inside typeApp.types
+						typeApp.types[j] = innerTypeApp.types[0]
+					} else if len(typeApp.types) == 1 {
+						// If type within parenthesis is BType, and our ParenType is the only AType in the application,
+						// we can put the type from parenthesis inside funType
+						funType.types[i] = innerBType
+					}
+				} else if i == len(funType.types)-1 && len(typeApp.types) == 1 {
+					// We can reduce parens in the last part of arrow divided type
+					replacementBTypes = innerFunType.types
+				}
+			}
+		}
+	}
+
+	// Replacement of the type after the last arrow with types inside parenthesis
+	if replacementBTypes != nil {
+		funType.types = funType.types[:len(funType.types)-1]
+		funType.types = append(funType.types, replacementBTypes...)
+	}
+}
+
 func (c *TypeChecker) isVarType(t BType) bool {
+	// Checks if the type is a single variable type
+
 	typeApp := t.(*TypeApp)
 
 	if len(typeApp.types) != 1 {
@@ -210,6 +278,8 @@ func (c *TypeChecker) isVarType(t BType) bool {
 }
 
 func (c *TypeChecker) createUniqueParams(funType *FunType, paramTypeChar byte) {
+	// Changes parameter types names so that they are unique
+
 	substitutions := make(map[string]string)
 	c.changeParams(funType, paramTypeChar, substitutions)
 }
@@ -248,6 +318,8 @@ func (c *TypeChecker) changeParams(funType *FunType, paramTypeChar byte, substit
 }
 
 func (c *TypeChecker) typeDeepCopy(oldType Type) *FunType {
+	// Creates a deep copy of a type
+
 	funType := &FunType{}
 	var bTypes []BType
 	for _, oldBType := range oldType.(*FunType).types {
@@ -278,6 +350,8 @@ func (c *TypeChecker) typeDeepCopy(oldType Type) *FunType {
 }
 
 func (c *TypeChecker) applySubstitutions(t Type) {
+	// Replaces parameter types with its calculated substitutions
+
 	s, ok := c.context[CurTypeSubstitutions]
 	if !ok {
 		c.errFatal(t, "No substitutions")
@@ -343,23 +417,19 @@ func (c *TypeChecker) printType(t Type) {
 	}
 }
 
-// Builtin types
+///////////////////////////////////// TYPES MATCHING ///////////////////////////////////////
 
-func getIntType() *FunType {
-	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Int"}}}}}
-}
-
-func getCharType() *FunType {
-	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Char"}}}}}
-}
-
-func getStringType() *FunType {
-	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "String"}}}}}
-}
-
-// Checking types match
+// When matching we allow substitution of parameter types.
+// Parameter types originating from the currently declared function type have '%' sign in
+// their names and those originating from other sources (for example function calls of case
+// expressions) have '$' in their names. The first ones can't be substituted by any type,
+// because they are defined so that they can fit any type provided by the user when calling
+// the function. The second ones may be substituted so that the whole types match each other.
 
 func (c *TypeChecker) checkMatch(v ASTNode, validType Type, actualType Type, sameLevel bool) {
+	// Checks if two types are matching, and applies needed substitutions so that they are the same
+
+	// We need to reduce parentheses in both types, so that they have the same form
 	c.reduceParens(validType)
 	c.reduceParens(actualType)
 	c.checkTypeMatch(v, validType, actualType, sameLevel)
@@ -381,15 +451,14 @@ func (c *TypeChecker) checkFunTypeMatch(v ASTNode, validType *FunType, actualTyp
 	validTypeLen := len(validType.types)
 	actualTypeLen := len(actualType.types)
 	if validTypeLen != actualTypeLen {
+		// If function types has different arity we merge the last subtypes (put them in parentheses)
+		// in the type with the bigger arity in hopes that we will match those subtypes with some
+		// parameter type
 		if validTypeLen > actualTypeLen && c.isVarType(actualType.types[actualTypeLen-1]) {
 			validType = c.mergeTypes(v, validType, validTypeLen-actualTypeLen+1)
 		} else if actualTypeLen > validTypeLen && c.isVarType(validType.types[validTypeLen-1]) {
 			actualType = c.mergeTypes(v, actualType, actualTypeLen-validTypeLen+1)
 		} else {
-			c.printType(validType)
-			fmt.Println()
-			c.printType(actualType)
-			fmt.Println()
 			c.errFatal(v, "Types arity not matching")
 		}
 	}
@@ -413,7 +482,7 @@ func (c *TypeChecker) checkBTypeMatch(v ASTNode, validType BType, actualType BTy
 
 func (c *TypeChecker) checkTypeAppMatch(v ASTNode, validType *TypeApp, actualType *TypeApp, sameLevel bool) {
 	if len(validType.types) != len(actualType.types) {
-		// When comparing function lhs and rhs type we can substitute only rhs type parameters, but when comparing
+		// When comparing function's lhs and rhs type we can substitute only rhs type parameters, but when comparing
 		// function call type with its arguments, case branches etc. we can substitute parameters on both sides
 		if len(actualType.types) == 1 || (sameLevel && len(validType.types) == 1) {
 			var v1, v2 *TypeApp
@@ -438,6 +507,8 @@ func (c *TypeChecker) checkTypeAppMatch(v ASTNode, validType *TypeApp, actualTyp
 			substs := c.context[CurTypeSubstitutions].(*TypeSubstitutions)
 			t, ok := substs.subst[actualType.id]
 			if ok {
+				// If types were swapped, then they had to on the same level, so there is no difference
+				// in the order of passing them to this function
 				c.checkMatch(v, validFunType, t, sameLevel)
 			} else {
 				substs.subst[actualType.id] = validFunType
@@ -446,7 +517,7 @@ func (c *TypeChecker) checkTypeAppMatch(v ASTNode, validType *TypeApp, actualTyp
 			c.errFatal(v, "Types not matching (different number of args)")
 		}
 	} else {
-		// Substitution can't be allowed on a type constructor
+		// Substitution can't be allowed on a type name when it has parameters
 		// It can be done only if we have a type without parameters or on one of the parameters
 		var substitutionAllowed bool
 		if len(validType.types) == 1 {
@@ -468,6 +539,7 @@ func (c *TypeChecker) checkATypeMatch(v ASTNode, validType AType, actualType ATy
 
 	mayBeSubstituted := true
 	if ok {
+		// Only parameter types originating from the rhs may be substituted
 		mayBeSubstituted = c.mayBeSubstituted(validType.(*VarType))
 	}
 
@@ -554,57 +626,16 @@ func (c *TypeChecker) checkParenTypeMatch(v ASTNode, validType AType, actualType
 }
 
 func (c *TypeChecker) mayBeSubstituted(v *VarType) bool {
+	// Checks if this parameter type may be substituted (even if that's true we don't know
+	// if it doesn't already have a substitute).
 	return strings.Contains(v.id, "$")
 }
 
-func (c *TypeChecker) reduceParens(v Type) {
-	var replacementBTypes []BType
+//////////////////////////////// THE ACTUAL CHECK /////////////////////////////////////
 
-	funType := v.(*FunType)
-	for i, bType := range funType.types {
-		typeApp := bType.(*TypeApp)
-		for j, aType := range typeApp.types {
-			// First, we reduce recursively types within tuples and parens
-			_, ok := aType.(*TupleType)
-			if ok {
-				tupleType := aType.(*TupleType)
-				for _, t := range tupleType.types {
-					c.reduceParens(t)
-				}
-			}
-
-			_, ok = aType.(*ParenType)
-			if ok {
-				parenType := aType.(*ParenType)
-				c.reduceParens(parenType.t)
-				innerFunType := parenType.t.(*FunType)
-				if len(innerFunType.types) == 1 {
-					innerBType := innerFunType.types[0]
-					innerTypeApp := innerBType.(*TypeApp)
-					if len(innerTypeApp.types) == 1 {
-						// If type within parenthesis is just AType, we can put it directly inside typeApp.types
-						typeApp.types[j] = innerTypeApp.types[0]
-					} else if len(typeApp.types) == 1 {
-						// If type within parenthesis is BType, and our ParenType is the only AType in the application,
-						// we can put type from parenthesis inside funType
-						funType.types[i] = innerBType
-					}
-				} else if i == len(funType.types)-1 && len(typeApp.types) == 1 {
-					// We can reduce parens in the last part of arrow divided type
-					replacementBTypes = innerFunType.types
-				}
-			}
-		}
-	}
-
-	// Replacement of the type after the last arrow with types inside parenthesis
-	if replacementBTypes != nil {
-		funType.types = funType.types[:len(funType.types)-1]
-		funType.types = append(funType.types, replacementBTypes...)
-	}
+type TypeCheckResult struct {
+	t *FunType
 }
-
-// The actual check
 
 func (c *TypeChecker) checkTopDecls(v TopDecls) *TypeCheckResult {
 	switch v := v.(type) {
@@ -663,7 +694,6 @@ func (c *TypeChecker) checkSimpleType(v SimpleType) *TypeCheckResult {
 
 	// Should place a *DataType at CurDataType field of context
 	// and a *DataTypeVars at CurDataTypeVars field
-
 	case *DataType:
 		return c.checkDataType(v)
 	}
@@ -827,7 +857,7 @@ func (c *TypeChecker) checkConstrDefTupleType(v *TupleType, argsCount int) *Type
 
 func (c *TypeChecker) checkConstrDefParenType(v *ParenType, argsCount int) *TypeCheckResult {
 	if argsCount > 0 {
-		c.errFatal(v, "Parenthesis type can't have any parameters")
+		c.errFatal(v, "Parentheses type can't have any parameters")
 	}
 
 	c.checkConstrDefType(v.t)
@@ -1030,7 +1060,7 @@ func (c *TypeChecker) checkTupleType(v *TupleType, argsCount int) *TypeCheckResu
 
 func (c *TypeChecker) checkParenType(v *ParenType, argsCount int) *TypeCheckResult {
 	if argsCount > 0 {
-		c.errFatal(v, "Parenthesis type can't have any parameters")
+		c.errFatal(v, "Parentheses type can't have any parameters")
 	}
 	c.checkType(v.t)
 	return &TypeCheckResult{}
@@ -1217,7 +1247,8 @@ func (c *TypeChecker) checkVar(v *Var) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkConstr(v *Constr) *TypeCheckResult {
-	// Checks constructor existence and type (in the form of a function type) and changes parameter types for unique ones
+	// Checks constructor existence and type (in the form of a function type)
+	// and changes parameter types for unique ones
 	constrInfo, ok := c.constrs[v.id]
 	if !ok {
 		c.errFatal(v, fmt.Sprintf("Constructor '%s' not defined", v.id))
