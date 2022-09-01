@@ -29,7 +29,7 @@ WHITESPACE: [ \r\n\t]+ -> skip;
 start : topdecls EOF;
 
 topdecls
-    : topdecl? (SEMICOLON topdecl)* # TopDeclsList
+    : topdecl? (SEMICOLON topdecl)* SEMICOLON? # TopDeclsList
     ;
 
 topdecl
@@ -107,7 +107,7 @@ aexp
     ;
 
 alts
-    : alt (SEMICOLON alt)*  # Alternatives
+    : alt (SEMICOLON alt)* SEMICOLON?  # Alternatives
     ;
 
 alt
