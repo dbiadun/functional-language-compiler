@@ -7,6 +7,7 @@ type GMachine struct {
 	stack      *GStack
 	dump       *GDump
 	heap       *GHeap
+	globalMap  *GGlobalMap
 }
 
 func NewGMachine() *GMachine {
@@ -15,6 +16,7 @@ func NewGMachine() *GMachine {
 	gMachine.stack = new(GStack)
 	gMachine.dump = new(GDump)
 	gMachine.heap = newGHeap()
+	gMachine.globalMap = newGGlobalMap()
 
 	return gMachine
 }
@@ -90,6 +92,8 @@ func newGHeap() *GHeap {
 	return h
 }
 
+// All the following functions assume that the heap is initialized
+
 func (h *GHeap) newAddr() *GAddr {
 	n := h.nextNum
 	h.nextNum++
@@ -111,10 +115,42 @@ func (h *GHeap) put(addr *GAddr, node GNode) {
 	h.h[num] = node
 }
 
+/////////////////////////////////////// GLOBAL MAP /////////////////////////////////////////
+
+type GGlobalMap struct {
+	m map[string]*GAddr
+}
+
+func newGGlobalMap() *GGlobalMap {
+	m := new(GGlobalMap)
+	m.m = make(map[string]*GAddr)
+
+	return m
+}
+
+// All the following functions assume that the map is initialized
+
+func (m *GGlobalMap) get(s string) *GAddr {
+	addr, ok := m.m[s]
+	if ok {
+		return addr
+	} else {
+		return nil
+	}
+}
+
+func (m *GGlobalMap) put(s string, addr *GAddr) {
+	m.m[s] = addr
+}
+
 //////////////////////////////////////// HELPERS ///////////////////////////////////////////
 
 type GAddr struct {
 	a int
+}
+
+type GCode struct {
+	c []GInstr
 }
 
 //////////////////////////////////////// NODES /////////////////////////////////////////////
@@ -126,6 +162,32 @@ type GNode interface {
 type BaseGNode struct{}
 
 func (*BaseGNode) gNode() {}
+
+type NInt struct {
+	BaseGNode
+	n int
+}
+
+type NApp struct {
+	BaseGNode
+	fun *GAddr
+	arg *GAddr
+}
+
+type NGlobal struct {
+	BaseGNode
+	argsNum int
+	code    *GCode
+}
+
+type NInd struct {
+	a *GAddr
+}
+
+type NData struct {
+	tag  int
+	args *GAddr
+}
 
 ////////////////////////////////////// INSTRUCTIONS ////////////////////////////////////////
 
