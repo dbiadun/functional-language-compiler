@@ -319,6 +319,7 @@ func (c *TypeChecker) changeParams(funType *FunType, paramTypeChar byte, substit
 
 func (c *TypeChecker) typeDeepCopy(oldType Type) *FunType {
 	// Creates a deep copy of a type
+	// Only strings are not deep copied (they are immutable so we can copy them without any repercussions)
 
 	funType := &FunType{}
 	var bTypes []BType
@@ -328,9 +329,9 @@ func (c *TypeChecker) typeDeepCopy(oldType Type) *FunType {
 		for _, oldAType := range oldTypeApp.types {
 			switch oldAType := oldAType.(type) {
 			case *ConType:
-				aTypes = append(aTypes, &ConType{id: strings.Clone(oldAType.id)})
+				aTypes = append(aTypes, &ConType{id: oldAType.id})
 			case *VarType:
-				aTypes = append(aTypes, &VarType{id: strings.Clone(oldAType.id)})
+				aTypes = append(aTypes, &VarType{id: oldAType.id})
 			case *TupleType:
 				var types []Type
 				for _, oldType := range oldAType.types {
