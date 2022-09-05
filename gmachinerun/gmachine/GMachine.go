@@ -1,4 +1,4 @@
-package main
+package gmachine
 
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
@@ -9,7 +9,7 @@ type GMachine struct {
 	heap       *GHeap
 }
 
-func newGMachine() *GMachine {
+func NewGMachine() *GMachine {
 	gMachine := new(GMachine)
 	gMachine.instrQueue = new(GInstrQueue)
 	gMachine.stack = new(GStack)
