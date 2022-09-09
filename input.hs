@@ -46,9 +46,20 @@ foldl fun acc l = case l of {
 listOfFirsts :: List (List a) -> List (Maybe a);
 listOfFirsts = map first;
 
+just :: Maybe Int -> Int;
+just x = case x of {
+    Just n -> n;
+    Nothing -> 0;
+};
+
 add :: Int -> Int -> Int;
 add a b = a + b;
 
 sum :: List Int -> Int;
 sum = foldl add 0;
 
+sumOfFirsts :: List (List Int) -> Int;
+sumOfFirsts l = sum (map just (listOfFirsts l));
+
+main :: Int;
+main = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));

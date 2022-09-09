@@ -15,7 +15,7 @@ func main() {
 	spew.Config.Indent = "  "
 
 	// Setup the input
-	is, _ := antlr.NewFileStream("input1.hs")
+	is, _ := antlr.NewFileStream("input.hs")
 	errorListener := &ParserErrorListener{}
 	//is := antlr.NewInputStream("data Maybe a = Just a | Nothing; int5 :: Maybe Int; int5 = Nothing")
 
