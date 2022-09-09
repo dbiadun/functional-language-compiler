@@ -314,6 +314,7 @@ type EBinary interface {
 	Exp
 	eBinary()
 	setExps(Exp, Exp)
+	getExps() (Exp, Exp)
 }
 
 type BaseEBinary struct {
@@ -327,6 +328,10 @@ func (*BaseEBinary) eBinary() {}
 func (e *BaseEBinary) setExps(e1 Exp, e2 Exp) {
 	e.e1 = e1
 	e.e2 = e2
+}
+
+func (e *BaseEBinary) getExps() (Exp, Exp) {
+	return e.e1, e.e2
 }
 
 type EMul struct {
