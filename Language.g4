@@ -24,6 +24,8 @@ STRING: '"'.*?'"';
 VARID: [a-z][a-zA-Z0-9_]*;
 CONID: [A-Z][a-zA-Z0-9_]*;
 WHITESPACE: [ \r\n\t]+ -> skip;
+COMMENT: '{-' .*? '-}' -> channel (HIDDEN);
+LINE_COMMENT: '--' ~[\r\n]* -> channel (HIDDEN);
 
 // Rules
 start : topdecls EOF;

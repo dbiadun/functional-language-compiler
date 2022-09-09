@@ -1,6 +1,12 @@
 data Maybe a = Just a | Nothing;
 data List a = Cons a (List a) | Nil;
 
+-- Line comment
+
+{- Multiline comment
+-- Still a comment
+-}
+
 first :: List a -> Maybe a;
 first x = case x of {
     Cons x xs -> Just x;
