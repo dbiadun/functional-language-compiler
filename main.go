@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"functional-language-compiler/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/davecgh/go-spew/spew"
 	"os"
+	"os/exec"
 )
 
 func main() {
@@ -13,7 +15,7 @@ func main() {
 	spew.Config.Indent = "  "
 
 	// Setup the input
-	is, _ := antlr.NewFileStream("input.hs")
+	is, _ := antlr.NewFileStream("input1.hs")
 	errorListener := &ParserErrorListener{}
 	//is := antlr.NewInputStream("data Maybe a = Just a | Nothing; int5 :: Maybe Int; int5 = Nothing")
 
@@ -39,6 +41,15 @@ func main() {
 	typeChecker.init()
 	typeChecker.checkTopDecls(ast)
 
-	spew.Dump(typeChecker)
+	codeGenerator := newCodeGenerator()
+	codeGenerator.gen(ast)
+
+	cmd := exec.Command("tinygo", "build", "-size", "full", "-o", "./gmachinerun/output", "./gmachinerun/")
+	stdout, err := cmd.Output()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf(string(stdout))
+	//spew.Dump(typeChecker)
 	//spew.Dump(ast)
 }

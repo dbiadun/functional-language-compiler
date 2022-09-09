@@ -22,23 +22,56 @@ func NewGMachine() *GMachine {
 }
 
 func (m *GMachine) run() int {
-	for m.instrQueue.size() > 0 {
-		instr := m.instrQueue.get()
-		instr.apply(m)
-	}
+	for {
+		for m.instrQueue.size() > 0 {
+			instr := m.instrQueue.get()
+			instr.apply(m)
+		}
 
-	addr := m.stack.get()
-	if addr == nil {
-		return 0
-	}
+		addr := m.stack.get()
+		if addr == nil {
+			return 0
+		}
 
-	res, ok := m.heap.get(addr).(*NInt)
-	if res == nil || !ok {
-		return 0
-	}
+		res1 := m.heap.get(addr)
+		if res1 == nil {
+			return 0
+		}
 
-	return res.n
+		res2, ok := res1.(*NInt)
+		if ok {
+			return res2.n
+		} else {
+			m.stack.put(addr)
+			m.instrQueue.put(&IUnwind{})
+		}
+	}
 }
+
+func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
+	code := &GCode{c: instrs}
+	node := &NGlobal{argsNum: arity, code: code}
+	addr := m.heap.putNew(node)
+	m.globalMap.put(name, addr)
+}
+
+//func (m *GMachine) printStack() {
+//	stack := m.stack.s
+//	if stack == nil {
+//		fmt.Println("ajdlfajf")
+//		return
+//	}
+//
+//	for _, addr := range stack {
+//		node := m.heap.get(addr)
+//		if node == nil {
+//			fmt.Print("Nil, ")
+//			continue
+//		}
+//		fmt.Print(fmt.Sprintf("%s, ", node))
+//	}
+//	fmt.Println()
+//}
 
 func errFatal(s string) {
 	panic("Runtime error: " + s)
@@ -273,6 +306,7 @@ type GCode struct {
 //////////////////////////////////////// NODES /////////////////////////////////////////////
 
 type GNode interface {
+	//fmt.Stringer
 	gNode()
 }
 
@@ -307,6 +341,26 @@ type NData struct {
 	tag  int
 	args []*GAddr
 }
+
+//func (n *NInt) String() string {
+//	return "NInt " + strconv.Itoa(n.n)
+//}
+//
+//func (n *NApp) String() string {
+//	return "NApp"
+//}
+//
+//func (n *NGlobal) String() string {
+//	return "NGlobal " + strconv.Itoa(n.argsNum)
+//}
+//
+//func (n *NInd) String() string {
+//	return "NInd"
+//}
+//
+//func (n *NData) String() string {
+//	return "NData " + strconv.Itoa(n.tag)
+//}
 
 ////////////////////////////////////// INSTRUCTIONS ////////////////////////////////////////
 
@@ -400,6 +454,8 @@ func (i *IUnwind) apply(m *GMachine) {
 	case *NInt:
 		_ = x
 		i.applyReturn(m)
+	case *NData:
+		i.applyReturn(m)
 	}
 }
 
@@ -436,8 +492,10 @@ func (i *IUnwind) applyGlobal(m *GMachine) {
 		lastAddr = appAddr
 	}
 
-	m.stack.put(lastAddr)
-	m.stack.putN(appAddrs)
+	if n > 0 {
+		m.stack.put(lastAddr)
+		m.stack.putN(appAddrs)
+	}
 
 	// TODO: check if cleaning the queue before isn't needed
 	m.instrQueue.putN(node.code.c)
@@ -452,11 +510,12 @@ func (i *IUnwind) applyInd(m *GMachine) {
 }
 
 func (i *IUnwind) applyReturn(m *GMachine) {
-	addr := m.stack.get()
 	queue, stack := m.dump.get()
 	if queue == nil || stack == nil {
-		errFatal("No saved state at the dump")
+		// return to get the whole program result
+		return
 	}
+	addr := m.stack.get()
 
 	m.instrQueue = queue
 	m.stack = stack
@@ -539,11 +598,17 @@ func (i *IJump) apply(m *GMachine) {
 	}
 
 	code, ok := i.m[data.tag]
-	if !ok {
-		errFatal("Missing pattern in case expression")
+	if ok {
+		m.instrQueue.putN(code)
+	} else {
+		// -1 is the default tag
+		code, ok := i.m[-1]
+		if ok {
+			m.instrQueue.putN(code)
+		} else {
+			errFatal("Missing pattern in case expression")
+		}
 	}
-
-	m.instrQueue.putN(code)
 }
 
 type ISlide struct {
