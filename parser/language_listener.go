@@ -71,6 +71,12 @@ type LanguageListener interface {
 	// EnterEMulDiv is called when entering the EMulDiv production.
 	EnterEMulDiv(c *EMulDivContext)
 
+	// EnterELogical is called when entering the ELogical production.
+	EnterELogical(c *ELogicalContext)
+
+	// EnterEComp is called when entering the EComp production.
+	EnterEComp(c *ECompContext)
+
 	// EnterECase is called when entering the ECase production.
 	EnterECase(c *ECaseContext)
 
@@ -193,6 +199,12 @@ type LanguageListener interface {
 
 	// ExitEMulDiv is called when exiting the EMulDiv production.
 	ExitEMulDiv(c *EMulDivContext)
+
+	// ExitELogical is called when exiting the ELogical production.
+	ExitELogical(c *ELogicalContext)
+
+	// ExitEComp is called when exiting the EComp production.
+	ExitEComp(c *ECompContext)
 
 	// ExitECase is called when exiting the ECase production.
 	ExitECase(c *ECaseContext)

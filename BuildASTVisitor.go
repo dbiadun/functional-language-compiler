@@ -344,6 +344,40 @@ func (v *BuildASTVisitor) VisitEBinary(subtree1 parser.IExpContext, subtree2 par
 	return e
 }
 
+func (v *BuildASTVisitor) VisitEComp(ctx *parser.ECompContext) interface{} {
+	e := new(EComp)
+
+	subtree1 := ctx.GetE1()
+	subtree2 := ctx.GetE2()
+	line := ctx.GetOp().GetLine()
+	col := ctx.GetOp().GetColumn()
+
+	e.setPos(line, col)
+
+	e.e1 = subtree1.Accept(v).(Exp)
+	e.e2 = subtree2.Accept(v).(Exp)
+	e.op = ctx.GetOp().GetText()
+
+	return e
+}
+
+func (v *BuildASTVisitor) VisitELogical(ctx *parser.ELogicalContext) interface{} {
+	e := new(ELogical)
+
+	subtree1 := ctx.GetE1()
+	subtree2 := ctx.GetE2()
+	line := ctx.GetOp().GetLine()
+	col := ctx.GetOp().GetColumn()
+
+	e.setPos(line, col)
+
+	e.e1 = subtree1.Accept(v).(Exp)
+	e.e2 = subtree2.Accept(v).(Exp)
+	e.op = ctx.GetOp().GetText()
+
+	return e
+}
+
 // fExp
 
 func (v *BuildASTVisitor) VisitFApp(ctx *parser.FAppContext) interface{} {

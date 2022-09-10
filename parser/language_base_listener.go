@@ -147,6 +147,18 @@ func (s *BaseLanguageListener) EnterEMulDiv(ctx *EMulDivContext) {}
 // ExitEMulDiv is called when production EMulDiv is exited.
 func (s *BaseLanguageListener) ExitEMulDiv(ctx *EMulDivContext) {}
 
+// EnterELogical is called when production ELogical is entered.
+func (s *BaseLanguageListener) EnterELogical(ctx *ELogicalContext) {}
+
+// ExitELogical is called when production ELogical is exited.
+func (s *BaseLanguageListener) ExitELogical(ctx *ELogicalContext) {}
+
+// EnterEComp is called when production EComp is entered.
+func (s *BaseLanguageListener) EnterEComp(ctx *ECompContext) {}
+
+// ExitEComp is called when production EComp is exited.
+func (s *BaseLanguageListener) ExitEComp(ctx *ECompContext) {}
+
 // EnterECase is called when production ECase is entered.
 func (s *BaseLanguageListener) EnterECase(ctx *ECaseContext) {}
 

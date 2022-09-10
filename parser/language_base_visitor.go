@@ -92,6 +92,14 @@ func (v *BaseLanguageVisitor) VisitEMulDiv(ctx *EMulDivContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseLanguageVisitor) VisitELogical(ctx *ELogicalContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitEComp(ctx *ECompContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseLanguageVisitor) VisitECase(ctx *ECaseContext) interface{} {
 	return v.VisitChildren(ctx)
 }

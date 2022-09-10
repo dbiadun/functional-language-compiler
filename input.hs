@@ -67,5 +67,35 @@ sum = foldl add 0;
 sumOfFirsts :: List (List Int) -> Int;
 sumOfFirsts l = sum (map just (listOfFirsts l));
 
+boolToInt :: Bool -> Int;
+boolToInt b = case b of {
+    False -> 0;
+    True -> 1;
+};
+
+numbersFrom :: Int -> List Int;
+numbersFrom n = Cons n (numbersFrom (n + 1));
+
+numbers :: List Int;
+numbers = numbersFrom 0;
+
+take :: Int -> List a -> List a;
+take n l = case n > 0 of {
+    False -> Nil;
+    True -> case l of {
+        Nil -> Nil;
+        Cons x xs -> Cons x (take (n - 1) xs);
+    };
+};
+
+sampleSumOfFirsts :: Int;
+sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
+
+sampleLazyOperators :: Int;
+sampleLazyOperators = just (first (Cons 3 (Cons (1/0) Nil)));
+
+sampleTake :: Int; -- Checks lazy evaluation of infinite structures like `numbers`
+sampleTake = sum (take 4 (Cons 3 (Cons 2 (Cons 4 (Cons 6 (Cons 7 Nil)))))); -- 15
+
 main :: Int;
-main = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
+main = sampleTake;

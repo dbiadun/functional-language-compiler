@@ -350,6 +350,20 @@ type ESub struct {
 	BaseEBinary
 }
 
+type EComp struct {
+	BaseExp
+	e1 Exp
+	e2 Exp
+	op string
+}
+
+type ELogical struct {
+	BaseExp
+	e1 Exp
+	e2 Exp
+	op string
+}
+
 // fExp
 
 type FExp interface {

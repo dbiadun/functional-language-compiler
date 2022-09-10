@@ -6,6 +6,14 @@ DIV: '/';
 ADD: '+';
 SUB: '-';
 ASSIGN: '=';
+LT: '<';
+GT: '>';
+LTE: '<=';
+GTE: '>=';
+EQ: '==';
+NEQ: '/=';
+AND: '&&';
+OR: '||';
 PAREN_LEFT: '(';
 PAREN_RIGHT: ')';
 BRACE_LEFT: '{';
@@ -93,6 +101,8 @@ exp
     | CASE exp OF BRACE_LEFT alts BRACE_RIGHT # ECase
     | e1=exp op=(MUL|DIV) e2=exp # EMulDiv
     | e1=exp op=(ADD|SUB) e2=exp # EAddSub
+    | e1=exp op=(LT|GT|LTE|GTE|EQ|NEQ) e2=exp # EComp
+    | e1=exp op=(AND|OR) e2=exp # ELogical
     ;
 
 fexp
