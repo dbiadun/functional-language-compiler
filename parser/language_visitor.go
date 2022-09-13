@@ -14,6 +14,9 @@ type LanguageVisitor interface {
 	// Visit a parse tree produced by LanguageParser#TopDeclsList.
 	VisitTopDeclsList(ctx *TopDeclsListContext) interface{}
 
+	// Visit a parse tree produced by LanguageParser#ImportTopDecl.
+	VisitImportTopDecl(ctx *ImportTopDeclContext) interface{}
+
 	// Visit a parse tree produced by LanguageParser#DataTopDecl.
 	VisitDataTopDecl(ctx *DataTopDeclContext) interface{}
 

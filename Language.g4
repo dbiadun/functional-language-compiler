@@ -22,6 +22,7 @@ COMMA: ',';
 SEMICOLON: ';';
 VERTICAL_BAR: '|';
 DOUBLE_COLON: '::';
+IMPORT: 'import';
 DATA: 'data';
 CASE: 'case';
 OF: 'of';
@@ -43,7 +44,8 @@ topdecls
     ;
 
 topdecl
-    : DATA simpletype ASSIGN constrs # DataTopDecl
+    : IMPORT STRING # ImportTopDecl
+    | DATA simpletype ASSIGN constrs # DataTopDecl
     | decl # FunTopDecl
     ;
 

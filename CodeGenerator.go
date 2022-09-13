@@ -41,10 +41,15 @@ func (g *CodeGenerator) addCompiledConstructors() {
 	g.constrTags["True"] = 1
 }
 
-func (g *CodeGenerator) gen(decls TopDecls) {
-	output := g.genOutput(decls)
+func (g *CodeGenerator) genCodePart(decls TopDecls) {
+	g.iteration = 0
+	g.genTopDecls(decls)
+}
 
-	file, err := os.Create("gmachinerun/main.go")
+func (g *CodeGenerator) emit(outputFile string) {
+	output := g.genOutput()
+
+	file, err := os.Create(outputFile)
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -325,6 +330,8 @@ func (g *CodeGenerator) genTopDeclsList(v *TopDeclsList) {
 
 func (g *CodeGenerator) genTopDecl(v TopDecl) {
 	switch v := v.(type) {
+	case *ImportTopDecl:
+		return
 	case *DataTopDecl:
 		g.genDataTopDecl(v)
 	case *FunTopDecl:
@@ -608,7 +615,7 @@ func (g *CodeGenerator) genPatCon(v *PatCon) (int, *EnvBackup) {
 
 //////////////////////////////////// OUTPUT CODE ///////////////////////////////////////////
 
-func (g *CodeGenerator) genOutput(v TopDecls) string {
+func (g *CodeGenerator) genOutput() string {
 	var res strings.Builder
 
 	res.WriteString("package main\n\n")
@@ -621,8 +628,6 @@ func (g *CodeGenerator) genOutput(v TopDecls) string {
 	res.WriteString("&IUnwind{},\n")
 	res.WriteString("}\n")
 	res.WriteString("gMachine.instrQueue.putN(initialInstructions)\n\n")
-
-	g.genTopDecls(v)
 
 	for f, code := range g.functionDefs {
 		res.WriteString(fmt.Sprintf("gMachine.addGlobal(%q, %d, %s)\n", f, g.functionArities[f], showCode(code)))

@@ -30,6 +30,10 @@ func (c *TypeChecker) init() {
 	c.addBuiltins()
 }
 
+func (c *TypeChecker) checkCodePart(ast TopDecls) {
+	c.checkTopDecls(ast)
+}
+
 func (*TypeChecker) errFatal(v ASTNode, s string) {
 	line, col := v.getPos()
 	log.Fatalf("TypeChecker error at line %d, column %d: %s\n", line, col, s)
@@ -675,6 +679,8 @@ func (c *TypeChecker) checkTopDeclsList(v *TopDeclsList) *TypeCheckResult {
 
 func (c *TypeChecker) checkTopDecl(v TopDecl) *TypeCheckResult {
 	switch v := v.(type) {
+	case *ImportTopDecl:
+		return &TypeCheckResult{}
 	case *DataTopDecl:
 		return c.checkDataTopDecl(v)
 	case *FunTopDecl:

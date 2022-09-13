@@ -36,6 +36,16 @@ func (v *BuildASTVisitor) VisitTopDeclsList(ctx *parser.TopDeclsListContext) int
 
 // topdecl
 
+func (v *BuildASTVisitor) VisitImportTopDecl(ctx *parser.ImportTopDeclContext) interface{} {
+	r := new(ImportTopDecl)
+	r.setPosFromCtx(ctx)
+
+	s := ctx.STRING().GetText()
+	r.file = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
+
+	return r
+}
+
 func (v *BuildASTVisitor) VisitDataTopDecl(ctx *parser.DataTopDeclContext) interface{} {
 	r := new(DataTopDecl)
 	r.setPosFromCtx(ctx)

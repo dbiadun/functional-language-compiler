@@ -14,6 +14,9 @@ type LanguageListener interface {
 	// EnterTopDeclsList is called when entering the TopDeclsList production.
 	EnterTopDeclsList(c *TopDeclsListContext)
 
+	// EnterImportTopDecl is called when entering the ImportTopDecl production.
+	EnterImportTopDecl(c *ImportTopDeclContext)
+
 	// EnterDataTopDecl is called when entering the DataTopDecl production.
 	EnterDataTopDecl(c *DataTopDeclContext)
 
@@ -142,6 +145,9 @@ type LanguageListener interface {
 
 	// ExitTopDeclsList is called when exiting the TopDeclsList production.
 	ExitTopDeclsList(c *TopDeclsListContext)
+
+	// ExitImportTopDecl is called when exiting the ImportTopDecl production.
+	ExitImportTopDecl(c *ImportTopDeclContext)
 
 	// ExitDataTopDecl is called when exiting the DataTopDecl production.
 	ExitDataTopDecl(c *DataTopDeclContext)

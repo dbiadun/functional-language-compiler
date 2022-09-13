@@ -64,6 +64,11 @@ type BaseTopDecl struct {
 
 func (*BaseTopDecl) topDecl() {}
 
+type ImportTopDecl struct {
+	BaseTopDecl
+	file string
+}
+
 type DataTopDecl struct {
 	BaseTopDecl
 	t       SimpleType

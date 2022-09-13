@@ -33,6 +33,12 @@ func (s *BaseLanguageListener) EnterTopDeclsList(ctx *TopDeclsListContext) {}
 // ExitTopDeclsList is called when production TopDeclsList is exited.
 func (s *BaseLanguageListener) ExitTopDeclsList(ctx *TopDeclsListContext) {}
 
+// EnterImportTopDecl is called when production ImportTopDecl is entered.
+func (s *BaseLanguageListener) EnterImportTopDecl(ctx *ImportTopDeclContext) {}
+
+// ExitImportTopDecl is called when production ImportTopDecl is exited.
+func (s *BaseLanguageListener) ExitImportTopDecl(ctx *ImportTopDeclContext) {}
+
 // EnterDataTopDecl is called when production DataTopDecl is entered.
 func (s *BaseLanguageListener) EnterDataTopDecl(ctx *DataTopDeclContext) {}
 
