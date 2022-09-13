@@ -30,6 +30,10 @@ func (c *TypeChecker) init() {
 	c.addBuiltins()
 }
 
+func (c *TypeChecker) checkCodePart(ast TopDecls) {
+	c.checkTopDecls(ast)
+}
+
 func (*TypeChecker) errFatal(v ASTNode, s string) {
 	line, col := v.getPos()
 	log.Fatalf("TypeChecker error at line %d, column %d: %s\n", line, col, s)
@@ -97,6 +101,11 @@ func (c *TypeChecker) addBuiltins() {
 	intDataType := &DataType{constr: "Int", vars: []string{}}
 	c.definedTypes["Int"] = intDataType
 
+	boolDataType := &DataType{constr: "Bool", vars: []string{}}
+	c.definedTypes["Bool"] = boolDataType
+	c.constrs["False"] = &ConstrInfo{boolDataType, &ConstrType{constr: "False", args: []AType{}}}
+	c.constrs["True"] = &ConstrInfo{boolDataType, &ConstrType{constr: "True", args: []AType{}}}
+
 	charDataType := &DataType{constr: "Char", vars: []string{}}
 	c.definedTypes["Char"] = charDataType
 
@@ -106,6 +115,10 @@ func (c *TypeChecker) addBuiltins() {
 
 func getIntType() *FunType {
 	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Int"}}}}}
+}
+
+func getBoolType() *FunType {
+	return &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "Bool"}}}}}
 }
 
 func getCharType() *FunType {
@@ -666,6 +679,8 @@ func (c *TypeChecker) checkTopDeclsList(v *TopDeclsList) *TypeCheckResult {
 
 func (c *TypeChecker) checkTopDecl(v TopDecl) *TypeCheckResult {
 	switch v := v.(type) {
+	case *ImportTopDecl:
+		return &TypeCheckResult{}
 	case *DataTopDecl:
 		return c.checkDataTopDecl(v)
 	case *FunTopDecl:
@@ -1129,6 +1144,10 @@ func (c *TypeChecker) checkExp(v Exp) *TypeCheckResult {
 		return c.checkEAdd(v)
 	case *ESub:
 		return c.checkESub(v)
+	case *EComp:
+		return c.checkEComp(v)
+	case *ELogical:
+		return c.checkELogical(v)
 	}
 	return &TypeCheckResult{}
 }
@@ -1184,6 +1203,29 @@ func (c *TypeChecker) checkBinOp(v ASTNode, e1 Exp, e2 Exp) *TypeCheckResult {
 	c.checkMatch(v, intType, t1.t, false)
 	c.checkMatch(v, intType, t2.t, false)
 	return &TypeCheckResult{intType}
+}
+
+func (c *TypeChecker) checkEComp(v *EComp) *TypeCheckResult {
+	intType := getIntType()
+	boolType := getBoolType()
+
+	t1 := c.checkExp(v.e1)
+	t2 := c.checkExp(v.e2)
+
+	c.checkMatch(v, intType, t1.t, false)
+	c.checkMatch(v, intType, t2.t, false)
+	return &TypeCheckResult{boolType}
+}
+
+func (c *TypeChecker) checkELogical(v *ELogical) *TypeCheckResult {
+	boolType := getBoolType()
+
+	t1 := c.checkExp(v.e1)
+	t2 := c.checkExp(v.e2)
+
+	c.checkMatch(v, boolType, t1.t, false)
+	c.checkMatch(v, boolType, t2.t, false)
+	return &TypeCheckResult{boolType}
 }
 
 func (c *TypeChecker) checkFExp(v FExp) *TypeCheckResult {

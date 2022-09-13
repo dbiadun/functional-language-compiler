@@ -18,6 +18,8 @@ func NewGMachine() *GMachine {
 	gMachine.heap = newGHeap()
 	gMachine.globalMap = newGGlobalMap()
 
+	gMachine.addCompiledGlobals()
+
 	return gMachine
 }
 
@@ -53,6 +55,35 @@ func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
 	node := &NGlobal{argsNum: arity, code: code}
 	addr := m.heap.putNew(node)
 	m.globalMap.put(name, addr)
+}
+
+func (m *GMachine) addCompiledGlobals() {
+	m.addGlobal("+", 2, m.createOpInstructions(2, &IBinOp{op: "+"}))
+	m.addGlobal("-", 2, m.createOpInstructions(2, &IBinOp{op: "-"}))
+	m.addGlobal("*", 2, m.createOpInstructions(2, &IBinOp{op: "*"}))
+	m.addGlobal("/", 2, m.createOpInstructions(2, &IBinOp{op: "/"}))
+	m.addGlobal("<", 2, m.createOpInstructions(2, &ICompOp{op: "<"}))
+	m.addGlobal(">", 2, m.createOpInstructions(2, &ICompOp{op: ">"}))
+	m.addGlobal("<=", 2, m.createOpInstructions(2, &ICompOp{op: "<="}))
+	m.addGlobal(">=", 2, m.createOpInstructions(2, &ICompOp{op: ">="}))
+	m.addGlobal("==", 2, m.createOpInstructions(2, &ICompOp{op: "=="}))
+	m.addGlobal("/=", 2, m.createOpInstructions(2, &ICompOp{op: "/="}))
+	m.addGlobal("&&", 2, m.createOpInstructions(2, &ILogOp{op: "&&"}))
+	m.addGlobal("||", 2, m.createOpInstructions(2, &ILogOp{op: "||"}))
+}
+
+func (m *GMachine) createOpInstructions(arity int, opInstr GInstr) []GInstr {
+	var instrs []GInstr
+	for i := 0; i < arity; i++ {
+		instrs = append(instrs, &IPush{n: arity - 1})
+		instrs = append(instrs, &IEval{})
+	}
+	instrs = append(instrs, opInstr)
+	instrs = append(instrs, &IUpdate{n: arity})
+	instrs = append(instrs, &IPop{n: arity})
+	instrs = append(instrs, &IUnwind{})
+
+	return instrs
 }
 
 //func (m *GMachine) printStack() {
@@ -342,6 +373,11 @@ type NData struct {
 	args []*GAddr
 }
 
+const (
+	boolFalseTag = 0
+	boolTrueTag  = 1
+)
+
 //func (n *NInt) String() string {
 //	return "NInt " + strconv.Itoa(n.n)
 //}
@@ -446,13 +482,10 @@ func (i *IUnwind) apply(m *GMachine) {
 		_ = x
 		i.applyApp(m)
 	case *NGlobal:
-		_ = x
 		i.applyGlobal(m)
 	case *NInd:
-		_ = x
 		i.applyInd(m)
 	case *NInt:
-		_ = x
 		i.applyReturn(m)
 	case *NData:
 		i.applyReturn(m)
@@ -622,7 +655,7 @@ func (i *ISlide) apply(m *GMachine) {
 
 type IBinOp struct {
 	BaseGInstr
-	op byte
+	op string
 }
 
 func (i *IBinOp) apply(m *GMachine) {
@@ -643,17 +676,110 @@ func (i *IBinOp) apply(m *GMachine) {
 
 	var res int
 	switch i.op {
-	case '+':
+	case "+":
 		res = n0 + n1
-	case '-':
+	case "-":
 		res = n0 - n1
-	case '*':
+	case "*":
 		res = n0 * n1
-	case '/':
+	case "/":
 		res = n0 / n1
 	}
 
 	resNode := &NInt{n: res}
+	addr := m.heap.putNew(resNode)
+	m.stack.put(addr)
+}
+
+type ICompOp struct {
+	BaseGInstr
+	op string
+}
+
+func (i *ICompOp) apply(m *GMachine) {
+	a0 := m.stack.get()
+	a1 := m.stack.get()
+	if a0 == nil || a1 == nil {
+		errFatal("Empty stack while trying to apply CompOp")
+	}
+
+	node0, ok0 := m.heap.get(a0).(*NInt)
+	node1, ok1 := m.heap.get(a1).(*NInt)
+	if !ok0 || !ok1 {
+		errFatal("CompOp arg address not pointing to an NInt")
+	}
+
+	n0 := node0.n
+	n1 := node1.n
+
+	var res bool
+	switch i.op {
+	case "<":
+		res = n0 < n1
+	case ">":
+		res = n0 > n1
+	case "<=":
+		res = n0 <= n1
+	case ">=":
+		res = n0 >= n1
+	case "==":
+		res = n0 == n1
+	case "/=":
+		res = n0 != n1
+	}
+
+	resNode := &NData{args: []*GAddr{}}
+	if res {
+		resNode.tag = boolTrueTag
+	} else {
+		resNode.tag = boolFalseTag
+	}
+
+	addr := m.heap.putNew(resNode)
+	m.stack.put(addr)
+}
+
+type ILogOp struct {
+	BaseGInstr
+	op string
+}
+
+func (i *ILogOp) apply(m *GMachine) {
+	a0 := m.stack.get()
+	a1 := m.stack.get()
+	if a0 == nil || a1 == nil {
+		errFatal("Empty stack while trying to apply LogOp")
+	}
+
+	node0, ok0 := m.heap.get(a0).(*NData)
+	node1, ok1 := m.heap.get(a1).(*NData)
+	if !ok0 || !ok1 {
+		errFatal("LogOp arg address not pointing to an NData")
+	}
+
+	var n0, n1 bool
+	if node0.tag == boolTrueTag {
+		n0 = true
+	}
+	if node1.tag == boolTrueTag {
+		n1 = true
+	}
+
+	var res bool
+	switch i.op {
+	case "&&":
+		res = n0 && n1
+	case "||":
+		res = n0 || n1
+	}
+
+	resNode := &NData{args: []*GAddr{}}
+	if res {
+		resNode.tag = boolTrueTag
+	} else {
+		resNode.tag = boolFalseTag
+	}
+
 	addr := m.heap.putNew(resNode)
 	m.stack.put(addr)
 }

@@ -6,6 +6,14 @@ DIV: '/';
 ADD: '+';
 SUB: '-';
 ASSIGN: '=';
+LT: '<';
+GT: '>';
+LTE: '<=';
+GTE: '>=';
+EQ: '==';
+NEQ: '/=';
+AND: '&&';
+OR: '||';
 PAREN_LEFT: '(';
 PAREN_RIGHT: ')';
 BRACE_LEFT: '{';
@@ -14,6 +22,7 @@ COMMA: ',';
 SEMICOLON: ';';
 VERTICAL_BAR: '|';
 DOUBLE_COLON: '::';
+IMPORT: 'import';
 DATA: 'data';
 CASE: 'case';
 OF: 'of';
@@ -24,6 +33,8 @@ STRING: '"'.*?'"';
 VARID: [a-z][a-zA-Z0-9_]*;
 CONID: [A-Z][a-zA-Z0-9_]*;
 WHITESPACE: [ \r\n\t]+ -> skip;
+COMMENT: '{-' .*? '-}' -> channel (HIDDEN);
+LINE_COMMENT: '--' ~[\r\n]* -> channel (HIDDEN);
 
 // Rules
 start : topdecls EOF;
@@ -33,7 +44,8 @@ topdecls
     ;
 
 topdecl
-    : DATA simpletype ASSIGN constrs # DataTopDecl
+    : IMPORT STRING # ImportTopDecl
+    | DATA simpletype ASSIGN constrs # DataTopDecl
     | decl # FunTopDecl
     ;
 
@@ -91,6 +103,8 @@ exp
     | CASE exp OF BRACE_LEFT alts BRACE_RIGHT # ECase
     | e1=exp op=(MUL|DIV) e2=exp # EMulDiv
     | e1=exp op=(ADD|SUB) e2=exp # EAddSub
+    | e1=exp op=(LT|GT|LTE|GTE|EQ|NEQ) e2=exp # EComp
+    | e1=exp op=(AND|OR) e2=exp # ELogical
     ;
 
 fexp

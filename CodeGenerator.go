@@ -32,12 +32,24 @@ func (g *CodeGenerator) init() {
 	g.initInstrSchemes()
 	g.constrTags = make(map[string]int)
 	g.env = createVarEnv()
+
+	g.addCompiledConstructors()
 }
 
-func (g *CodeGenerator) gen(decls TopDecls) {
-	output := g.genOutput(decls)
+func (g *CodeGenerator) addCompiledConstructors() {
+	g.constrTags["False"] = 0
+	g.constrTags["True"] = 1
+}
 
-	file, err := os.Create("gmachinerun/main.go")
+func (g *CodeGenerator) genCodePart(decls TopDecls) {
+	g.iteration = 0
+	g.genTopDecls(decls)
+}
+
+func (g *CodeGenerator) emit(outputFile string) {
+	output := g.genOutput()
+
+	file, err := os.Create(outputFile)
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -318,6 +330,8 @@ func (g *CodeGenerator) genTopDeclsList(v *TopDeclsList) {
 
 func (g *CodeGenerator) genTopDecl(v TopDecl) {
 	switch v := v.(type) {
+	case *ImportTopDecl:
+		return
 	case *DataTopDecl:
 		g.genDataTopDecl(v)
 	case *FunTopDecl:
@@ -410,6 +424,10 @@ func (g *CodeGenerator) genExp(v Exp) {
 		g.genEBinary(v, "+")
 	case *ESub:
 		g.genEBinary(v, "-")
+	case *EComp:
+		g.genEComp(v)
+	case *ELogical:
+		g.genELogical(v)
 	}
 }
 
@@ -435,12 +453,34 @@ func (g *CodeGenerator) genECase(v *ECase) {
 func (g *CodeGenerator) genEBinary(v EBinary, op string) {
 	e1, e2 := v.getExps()
 	g.genExp(e2)
-	g.pushInstr(cEval)
 	g.genExp(e1)
-	g.pushInstr(cEval)
 
 	// We need to print the operator in quotes
-	g.pushInstr(cBinOp, fmt.Sprintf("'%s'", op))
+	g.pushInstr(cPushGlobal, fmt.Sprintf("%q", op))
+	g.pushInstr(cMkApp)
+	g.pushInstr(cMkApp)
+	g.env.changeStackSize(-1) // Two args are replaced by one result
+}
+
+func (g *CodeGenerator) genEComp(v *EComp) {
+	g.genExp(v.e2)
+	g.genExp(v.e1)
+
+	// We need to print the operator in quotes
+	g.pushInstr(cPushGlobal, fmt.Sprintf("%q", v.op))
+	g.pushInstr(cMkApp)
+	g.pushInstr(cMkApp)
+	g.env.changeStackSize(-1) // Two args are replaced by one result
+}
+
+func (g *CodeGenerator) genELogical(v *ELogical) {
+	g.genExp(v.e2)
+	g.genExp(v.e1)
+
+	// We need to print the operator in quotes
+	g.pushInstr(cPushGlobal, fmt.Sprintf("%q", v.op))
+	g.pushInstr(cMkApp)
+	g.pushInstr(cMkApp)
 	g.env.changeStackSize(-1) // Two args are replaced by one result
 }
 
@@ -575,7 +615,7 @@ func (g *CodeGenerator) genPatCon(v *PatCon) (int, *EnvBackup) {
 
 //////////////////////////////////// OUTPUT CODE ///////////////////////////////////////////
 
-func (g *CodeGenerator) genOutput(v TopDecls) string {
+func (g *CodeGenerator) genOutput() string {
 	var res strings.Builder
 
 	res.WriteString("package main\n\n")
@@ -588,8 +628,6 @@ func (g *CodeGenerator) genOutput(v TopDecls) string {
 	res.WriteString("&IUnwind{},\n")
 	res.WriteString("}\n")
 	res.WriteString("gMachine.instrQueue.putN(initialInstructions)\n\n")
-
-	g.genTopDecls(v)
 
 	for f, code := range g.functionDefs {
 		res.WriteString(fmt.Sprintf("gMachine.addGlobal(%q, %d, %s)\n", f, g.functionArities[f], showCode(code)))

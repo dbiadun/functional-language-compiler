@@ -33,6 +33,12 @@ func (s *BaseLanguageListener) EnterTopDeclsList(ctx *TopDeclsListContext) {}
 // ExitTopDeclsList is called when production TopDeclsList is exited.
 func (s *BaseLanguageListener) ExitTopDeclsList(ctx *TopDeclsListContext) {}
 
+// EnterImportTopDecl is called when production ImportTopDecl is entered.
+func (s *BaseLanguageListener) EnterImportTopDecl(ctx *ImportTopDeclContext) {}
+
+// ExitImportTopDecl is called when production ImportTopDecl is exited.
+func (s *BaseLanguageListener) ExitImportTopDecl(ctx *ImportTopDeclContext) {}
+
 // EnterDataTopDecl is called when production DataTopDecl is entered.
 func (s *BaseLanguageListener) EnterDataTopDecl(ctx *DataTopDeclContext) {}
 
@@ -146,6 +152,18 @@ func (s *BaseLanguageListener) EnterEMulDiv(ctx *EMulDivContext) {}
 
 // ExitEMulDiv is called when production EMulDiv is exited.
 func (s *BaseLanguageListener) ExitEMulDiv(ctx *EMulDivContext) {}
+
+// EnterELogical is called when production ELogical is entered.
+func (s *BaseLanguageListener) EnterELogical(ctx *ELogicalContext) {}
+
+// ExitELogical is called when production ELogical is exited.
+func (s *BaseLanguageListener) ExitELogical(ctx *ELogicalContext) {}
+
+// EnterEComp is called when production EComp is entered.
+func (s *BaseLanguageListener) EnterEComp(ctx *ECompContext) {}
+
+// ExitEComp is called when production EComp is exited.
+func (s *BaseLanguageListener) ExitEComp(ctx *ECompContext) {}
 
 // EnterECase is called when production ECase is entered.
 func (s *BaseLanguageListener) EnterECase(ctx *ECaseContext) {}

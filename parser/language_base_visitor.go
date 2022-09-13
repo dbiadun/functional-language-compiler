@@ -16,6 +16,10 @@ func (v *BaseLanguageVisitor) VisitTopDeclsList(ctx *TopDeclsListContext) interf
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseLanguageVisitor) VisitImportTopDecl(ctx *ImportTopDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseLanguageVisitor) VisitDataTopDecl(ctx *DataTopDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -89,6 +93,14 @@ func (v *BaseLanguageVisitor) VisitDeclExp(ctx *DeclExpContext) interface{} {
 }
 
 func (v *BaseLanguageVisitor) VisitEMulDiv(ctx *EMulDivContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitELogical(ctx *ELogicalContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitEComp(ctx *ECompContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

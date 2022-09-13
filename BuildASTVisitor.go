@@ -36,6 +36,16 @@ func (v *BuildASTVisitor) VisitTopDeclsList(ctx *parser.TopDeclsListContext) int
 
 // topdecl
 
+func (v *BuildASTVisitor) VisitImportTopDecl(ctx *parser.ImportTopDeclContext) interface{} {
+	r := new(ImportTopDecl)
+	r.setPosFromCtx(ctx)
+
+	s := ctx.STRING().GetText()
+	r.file = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
+
+	return r
+}
+
 func (v *BuildASTVisitor) VisitDataTopDecl(ctx *parser.DataTopDeclContext) interface{} {
 	r := new(DataTopDecl)
 	r.setPosFromCtx(ctx)
@@ -340,6 +350,40 @@ func (v *BuildASTVisitor) VisitEBinary(subtree1 parser.IExpContext, subtree2 par
 	e2 := subtree2.Accept(v).(Exp)
 
 	e.setExps(e1, e2)
+
+	return e
+}
+
+func (v *BuildASTVisitor) VisitEComp(ctx *parser.ECompContext) interface{} {
+	e := new(EComp)
+
+	subtree1 := ctx.GetE1()
+	subtree2 := ctx.GetE2()
+	line := ctx.GetOp().GetLine()
+	col := ctx.GetOp().GetColumn()
+
+	e.setPos(line, col)
+
+	e.e1 = subtree1.Accept(v).(Exp)
+	e.e2 = subtree2.Accept(v).(Exp)
+	e.op = ctx.GetOp().GetText()
+
+	return e
+}
+
+func (v *BuildASTVisitor) VisitELogical(ctx *parser.ELogicalContext) interface{} {
+	e := new(ELogical)
+
+	subtree1 := ctx.GetE1()
+	subtree2 := ctx.GetE2()
+	line := ctx.GetOp().GetLine()
+	col := ctx.GetOp().GetColumn()
+
+	e.setPos(line, col)
+
+	e.e1 = subtree1.Accept(v).(Exp)
+	e.e2 = subtree2.Accept(v).(Exp)
+	e.op = ctx.GetOp().GetText()
 
 	return e
 }

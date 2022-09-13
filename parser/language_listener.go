@@ -14,6 +14,9 @@ type LanguageListener interface {
 	// EnterTopDeclsList is called when entering the TopDeclsList production.
 	EnterTopDeclsList(c *TopDeclsListContext)
 
+	// EnterImportTopDecl is called when entering the ImportTopDecl production.
+	EnterImportTopDecl(c *ImportTopDeclContext)
+
 	// EnterDataTopDecl is called when entering the DataTopDecl production.
 	EnterDataTopDecl(c *DataTopDeclContext)
 
@@ -70,6 +73,12 @@ type LanguageListener interface {
 
 	// EnterEMulDiv is called when entering the EMulDiv production.
 	EnterEMulDiv(c *EMulDivContext)
+
+	// EnterELogical is called when entering the ELogical production.
+	EnterELogical(c *ELogicalContext)
+
+	// EnterEComp is called when entering the EComp production.
+	EnterEComp(c *ECompContext)
 
 	// EnterECase is called when entering the ECase production.
 	EnterECase(c *ECaseContext)
@@ -137,6 +146,9 @@ type LanguageListener interface {
 	// ExitTopDeclsList is called when exiting the TopDeclsList production.
 	ExitTopDeclsList(c *TopDeclsListContext)
 
+	// ExitImportTopDecl is called when exiting the ImportTopDecl production.
+	ExitImportTopDecl(c *ImportTopDeclContext)
+
 	// ExitDataTopDecl is called when exiting the DataTopDecl production.
 	ExitDataTopDecl(c *DataTopDeclContext)
 
@@ -193,6 +205,12 @@ type LanguageListener interface {
 
 	// ExitEMulDiv is called when exiting the EMulDiv production.
 	ExitEMulDiv(c *EMulDivContext)
+
+	// ExitELogical is called when exiting the ELogical production.
+	ExitELogical(c *ELogicalContext)
+
+	// ExitEComp is called when exiting the EComp production.
+	ExitEComp(c *ECompContext)
 
 	// ExitECase is called when exiting the ECase production.
 	ExitECase(c *ECaseContext)

@@ -14,6 +14,9 @@ type LanguageVisitor interface {
 	// Visit a parse tree produced by LanguageParser#TopDeclsList.
 	VisitTopDeclsList(ctx *TopDeclsListContext) interface{}
 
+	// Visit a parse tree produced by LanguageParser#ImportTopDecl.
+	VisitImportTopDecl(ctx *ImportTopDeclContext) interface{}
+
 	// Visit a parse tree produced by LanguageParser#DataTopDecl.
 	VisitDataTopDecl(ctx *DataTopDeclContext) interface{}
 
@@ -70,6 +73,12 @@ type LanguageVisitor interface {
 
 	// Visit a parse tree produced by LanguageParser#EMulDiv.
 	VisitEMulDiv(ctx *EMulDivContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#ELogical.
+	VisitELogical(ctx *ELogicalContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#EComp.
+	VisitEComp(ctx *ECompContext) interface{}
 
 	// Visit a parse tree produced by LanguageParser#ECase.
 	VisitECase(ctx *ECaseContext) interface{}
