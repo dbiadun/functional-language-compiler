@@ -17,6 +17,15 @@ snd x = case x of {
     Nil -> Nothing;
 };
 
+last :: List a -> Maybe a;
+last x = case x of {
+    Cons x xs -> case xs of {
+        Nil -> Just x;
+        l -> last l;
+    };
+    Nil -> Nothing;
+};
+
 firstTwo :: List a -> Maybe (List a);
 firstTwo l = case (fst l) of {
     Nothing -> Nothing;
@@ -40,6 +49,9 @@ foldl fun acc l = case l of {
 
 listOfFirsts :: List (List a) -> List (Maybe a);
 listOfFirsts = map fst;
+
+listOfLasts :: List (List a) -> List (Maybe a);
+listOfLasts = map last;
 
 take :: Int -> List a -> List a;
 take n l = case n > 0 of {

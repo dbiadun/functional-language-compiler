@@ -3,11 +3,14 @@ package main
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
 type GMachine struct {
-	instrQueue *GInstrQueue
-	stack      *GStack
-	dump       *GDump
-	heap       *GHeap
-	globalMap  *GGlobalMap
+	instrQueue  *GInstrQueue
+	stack       *GStack
+	dump        *GDump
+	heap        *GHeap
+	globalMap   *GGlobalMap
+	gcRound     int
+	gcNodeCount int
+	gcThreshold int
 }
 
 func NewGMachine() *GMachine {
@@ -53,7 +56,7 @@ func (m *GMachine) run() int {
 func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
 	code := &GCode{c: instrs}
 	node := &NGlobal{argsNum: arity, code: code}
-	addr := m.heap.putNew(node)
+	addr := m.allocNewNode(node)
 	m.globalMap.put(name, addr)
 }
 
@@ -86,6 +89,14 @@ func (m *GMachine) createOpInstructions(arity int, opInstr GInstr) []GInstr {
 	return instrs
 }
 
+func (m *GMachine) allocNewNode(node GNode) *GAddr {
+	addr := m.heap.putNew(node)
+	m.gcNodeCount++
+	m.gcRunIfNeeded(addr)
+
+	return addr
+}
+
 //func (m *GMachine) printStack() {
 //	stack := m.stack.s
 //	if stack == nil {
@@ -106,6 +117,73 @@ func (m *GMachine) createOpInstructions(arity int, opInstr GInstr) []GInstr {
 
 func errFatal(s string) {
 	panic("Runtime error: " + s)
+}
+
+/////////////////////////////////// GARBAGE COLLECTION /////////////////////////////////////
+
+func (m *GMachine) gcRunIfNeeded(newNodeToVisit *GAddr) {
+	if m.gcNodeCount > m.gcThreshold {
+		m.gcRun(newNodeToVisit)
+		m.gcThreshold = 2 * m.gcNodeCount
+	}
+}
+
+func (m *GMachine) gcRun(newNodeToVisit *GAddr) {
+	m.gcRound++
+	m.gcMark(newNodeToVisit)
+	m.gcSweep()
+}
+
+func (m *GMachine) gcMark(newNodeToVisit *GAddr) {
+	m.gcVisitStack(m.stack)
+	for _, dumpEntry := range m.dump.d {
+		m.gcVisitStack(dumpEntry.s)
+	}
+	for _, addr := range m.globalMap.m {
+		m.gcVisitNode(addr)
+	}
+	m.gcVisitNode(newNodeToVisit)
+}
+
+func (m *GMachine) gcVisitStack(stack *GStack) {
+	if stack.s == nil {
+		return
+	}
+
+	for _, addr := range stack.s {
+		m.gcVisitNode(addr)
+	}
+}
+
+func (m *GMachine) gcVisitNode(addr *GAddr) {
+	node := m.heap.get(addr)
+	if node != nil {
+		node.setGcRound(m.gcRound)
+
+		switch node := node.(type) {
+		case *NInt:
+		case *NApp:
+			m.gcVisitNode(node.fun)
+			m.gcVisitNode(node.arg)
+		case *NGlobal:
+		case *NInd:
+			m.gcVisitNode(node.a)
+		case *NData:
+			for _, arg := range node.args {
+				m.gcVisitNode(arg)
+			}
+		}
+	}
+}
+
+func (m *GMachine) gcSweep() {
+	for addr, node := range m.heap.h {
+		if node == nil || node.getGcRound() != m.gcRound {
+			m.gcNodeCount--
+			m.heap.h[addr] = nil
+			delete(m.heap.h, addr)
+		}
+	}
 }
 
 /////////////////////////////////// INSTRUCTIONS QUEUE /////////////////////////////////////
@@ -339,11 +417,23 @@ type GCode struct {
 type GNode interface {
 	//fmt.Stringer
 	gNode()
+	getGcRound() int
+	setGcRound(int)
 }
 
-type BaseGNode struct{}
+type BaseGNode struct {
+	gcRound int
+}
 
 func (*BaseGNode) gNode() {}
+
+func (n *BaseGNode) getGcRound() int {
+	return n.gcRound
+}
+
+func (n *BaseGNode) setGcRound(round int) {
+	n.gcRound = round
+}
 
 type NInt struct {
 	BaseGNode
@@ -417,7 +507,7 @@ type IPushInt struct {
 
 func (i *IPushInt) apply(m *GMachine) {
 	node := &NInt{n: i.n}
-	addr := m.heap.putNew(node)
+	addr := m.allocNewNode(node)
 	m.stack.put(addr)
 }
 
@@ -458,7 +548,7 @@ func (i *IMkApp) apply(m *GMachine) {
 	}
 
 	node := &NApp{fun: funA, arg: argA}
-	addr := m.heap.putNew(node)
+	addr := m.allocNewNode(node)
 	m.stack.put(addr)
 }
 
@@ -580,7 +670,7 @@ type IPack struct {
 func (i *IPack) apply(m *GMachine) {
 	args := m.stack.getN(i.n)
 	node := &NData{tag: i.t, args: args}
-	addr := m.heap.putNew(node)
+	addr := m.allocNewNode(node)
 	m.stack.put(addr)
 }
 
@@ -687,7 +777,7 @@ func (i *IBinOp) apply(m *GMachine) {
 	}
 
 	resNode := &NInt{n: res}
-	addr := m.heap.putNew(resNode)
+	addr := m.allocNewNode(resNode)
 	m.stack.put(addr)
 }
 
@@ -735,7 +825,7 @@ func (i *ICompOp) apply(m *GMachine) {
 		resNode.tag = boolFalseTag
 	}
 
-	addr := m.heap.putNew(resNode)
+	addr := m.allocNewNode(resNode)
 	m.stack.put(addr)
 }
 
@@ -780,7 +870,7 @@ func (i *ILogOp) apply(m *GMachine) {
 		resNode.tag = boolFalseTag
 	}
 
-	addr := m.heap.putNew(resNode)
+	addr := m.allocNewNode(resNode)
 	m.stack.put(addr)
 }
 
@@ -810,7 +900,7 @@ type IAlloc struct {
 func (i *IAlloc) apply(m *GMachine) {
 	for j := 0; j < i.n; j++ {
 		node := &NInd{a: nil}
-		addr := m.heap.putNew(node)
+		addr := m.allocNewNode(node)
 		m.stack.put(addr)
 	}
 }

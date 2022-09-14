@@ -33,6 +33,9 @@ numbersFrom n = Cons n (numbersFrom (n + 1));
 numbers :: List Int;
 numbers = numbersFrom 0;
 
+nNumbers :: Int -> List Int;
+nNumbers n = take n numbers;
+
 sampleSumOfFirsts :: Int;
 sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
 
@@ -42,5 +45,8 @@ sampleLazyOperators = just (fst (Cons 3 (Cons (1/0) Nil)));
 sampleTake :: Int; -- Checks lazy evaluation of infinite structures like `numbers`
 sampleTake = sum (take 4 (Cons 3 (Cons 2 (Cons 4 (Cons 6 (Cons 7 Nil)))))); -- 15
 
+sampleSumOfLasts :: Int; -- Checks the performance when many nodes are needed (garbage collection)
+sampleSumOfLasts = sum (map just (listOfLasts (map nNumbers (nNumbers 30))));
+
 main :: Int;
-main = sampleTake;
+main = sampleSumOfLasts;
