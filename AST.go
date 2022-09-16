@@ -254,6 +254,10 @@ type ParenType struct {
 	t Type
 }
 
+type UnitType struct {
+	BaseAType
+}
+
 // funlhs
 
 type FunLhs interface {
@@ -307,6 +311,11 @@ func (*BaseExp) exp() {}
 type EFun struct {
 	BaseExp
 	fExp FExp
+}
+
+type EDo struct {
+	BaseExp
+	stmts Stmts
 }
 
 type ECase struct {
@@ -429,6 +438,49 @@ type ParenExp struct {
 type Tuple struct {
 	BaseAExp
 	exps []Exp
+}
+
+// stmts
+
+type Stmts interface {
+	ASTNode
+	stmts()
+}
+
+type BaseStmts struct {
+	BaseASTNode
+}
+
+func (*BaseStmts) stmts() {}
+
+type StmtsList struct {
+	BaseStmts
+	statements []Stmt
+	exp        Exp
+}
+
+// stmt
+
+type Stmt interface {
+	ASTNode
+	stmt()
+}
+
+type BaseStmt struct {
+	BaseASTNode
+}
+
+func (*BaseStmt) stmt() {}
+
+type SExp struct {
+	BaseStmt
+	exp Exp
+}
+
+type SAssign struct {
+	BaseStmt
+	pat Pat
+	exp Exp
 }
 
 // alt

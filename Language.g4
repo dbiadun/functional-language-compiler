@@ -14,6 +14,7 @@ EQ: '==';
 NEQ: '/=';
 AND: '&&';
 OR: '||';
+PARENS: '()';
 PAREN_LEFT: '(';
 PAREN_RIGHT: ')';
 BRACE_LEFT: '{';
@@ -24,9 +25,11 @@ VERTICAL_BAR: '|';
 DOUBLE_COLON: '::';
 IMPORT: 'import';
 DATA: 'data';
+DO: 'do';
 CASE: 'case';
 OF: 'of';
-ARROW: '->';
+ARROW_RIGHT: '->';
+ARROW_LEFT: '<-';
 INT: [0-9]+;
 CHAR: '\''.'\'';
 STRING: '"'.*?'"';
@@ -76,7 +79,7 @@ vars
     ;
 
 type
-    : btype (ARROW btype)* # FunType
+    : btype (ARROW_RIGHT btype)* # FunType
     ;
 
 btype
@@ -88,6 +91,7 @@ atype
     | VARID # VarType
     | PAREN_LEFT type (COMMA type)+ PAREN_RIGHT # TupleType
     | PAREN_LEFT type PAREN_RIGHT # ParenType
+    | PARENS # UnitType
     ;
 
 funlhs
@@ -100,6 +104,7 @@ rhs
 
 exp
     : fexp # EFun
+    | DO BRACE_LEFT stmts BRACE_RIGHT # EDo
     | CASE exp OF BRACE_LEFT alts BRACE_RIGHT # ECase
     | e1=exp op=(MUL|DIV) e2=exp # EMulDiv
     | e1=exp op=(ADD|SUB) e2=exp # EAddSub
@@ -120,12 +125,21 @@ aexp
     | PAREN_LEFT exp (COMMA exp)+ PAREN_RIGHT # Tuple
     ;
 
+stmts
+    : stmt* exp SEMICOLON? # StmtsList
+    ;
+
+stmt
+    : exp SEMICOLON # SExp
+    | pat ARROW_LEFT exp SEMICOLON # SAssign
+    ;
+
 alts
     : alt (SEMICOLON alt)* SEMICOLON?  # Alternatives
     ;
 
 alt
-    : pat ARROW exp # Alternative
+    : pat ARROW_RIGHT exp # Alternative
     ;
 
 pat

@@ -1,5 +1,9 @@
 package main
 
+import (
+	"fmt"
+)
+
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
 type GMachine struct {
@@ -35,17 +39,17 @@ func (m *GMachine) run() int {
 
 		addr := m.stack.get()
 		if addr == nil {
-			return 0
+			return 1
 		}
 
 		res1 := m.heap.get(addr)
 		if res1 == nil {
-			return 0
+			return 1
 		}
 
-		res2, ok := res1.(*NInt)
+		_, ok := res1.(*NUnit)
 		if ok {
-			return res2.n
+			return 0
 		} else {
 			m.stack.put(addr)
 			m.instrQueue.put(&IUnwind{})
@@ -61,27 +65,32 @@ func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
 }
 
 func (m *GMachine) addCompiledGlobals() {
-	m.addGlobal("+", 2, m.createOpInstructions(2, &IBinOp{op: "+"}))
-	m.addGlobal("-", 2, m.createOpInstructions(2, &IBinOp{op: "-"}))
-	m.addGlobal("*", 2, m.createOpInstructions(2, &IBinOp{op: "*"}))
-	m.addGlobal("/", 2, m.createOpInstructions(2, &IBinOp{op: "/"}))
-	m.addGlobal("<", 2, m.createOpInstructions(2, &ICompOp{op: "<"}))
-	m.addGlobal(">", 2, m.createOpInstructions(2, &ICompOp{op: ">"}))
-	m.addGlobal("<=", 2, m.createOpInstructions(2, &ICompOp{op: "<="}))
-	m.addGlobal(">=", 2, m.createOpInstructions(2, &ICompOp{op: ">="}))
-	m.addGlobal("==", 2, m.createOpInstructions(2, &ICompOp{op: "=="}))
-	m.addGlobal("/=", 2, m.createOpInstructions(2, &ICompOp{op: "/="}))
-	m.addGlobal("&&", 2, m.createOpInstructions(2, &ILogOp{op: "&&"}))
-	m.addGlobal("||", 2, m.createOpInstructions(2, &ILogOp{op: "||"}))
+	m.addGlobal("+", 2, m.createFunInstructions(2, &IBinOp{op: "+"}))
+	m.addGlobal("-", 2, m.createFunInstructions(2, &IBinOp{op: "-"}))
+	m.addGlobal("*", 2, m.createFunInstructions(2, &IBinOp{op: "*"}))
+	m.addGlobal("/", 2, m.createFunInstructions(2, &IBinOp{op: "/"}))
+	m.addGlobal("<", 2, m.createFunInstructions(2, &ICompOp{op: "<"}))
+	m.addGlobal(">", 2, m.createFunInstructions(2, &ICompOp{op: ">"}))
+	m.addGlobal("<=", 2, m.createFunInstructions(2, &ICompOp{op: "<="}))
+	m.addGlobal(">=", 2, m.createFunInstructions(2, &ICompOp{op: ">="}))
+	m.addGlobal("==", 2, m.createFunInstructions(2, &ICompOp{op: "=="}))
+	m.addGlobal("/=", 2, m.createFunInstructions(2, &ICompOp{op: "/="}))
+	m.addGlobal("&&", 2, m.createFunInstructions(2, &ILogOp{op: "&&"}))
+	m.addGlobal("||", 2, m.createFunInstructions(2, &ILogOp{op: "||"}))
+
+	m.addGlobal("return", 1, m.createFunInstructions(1, &IIOFun{fun: "return"}))
+	m.addGlobal("putStr", 1, m.createFunInstructions(1, &IIOFun{fun: "putStr"}))
+	m.addGlobal("putInt", 1, m.createFunInstructions(1, &IIOFun{fun: "putInt"}))
+	m.addGlobal("getLine", 0, m.createFunInstructions(0, &IIOFun{fun: "getLine"}))
 }
 
-func (m *GMachine) createOpInstructions(arity int, opInstr GInstr) []GInstr {
+func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
 	var instrs []GInstr
 	for i := 0; i < arity; i++ {
 		instrs = append(instrs, &IPush{n: arity - 1})
 		instrs = append(instrs, &IEval{})
 	}
-	instrs = append(instrs, opInstr)
+	instrs = append(instrs, funInstr)
 	instrs = append(instrs, &IUpdate{n: arity})
 	instrs = append(instrs, &IPop{n: arity})
 	instrs = append(instrs, &IUnwind{})
@@ -440,6 +449,15 @@ type NInt struct {
 	n int
 }
 
+type NString struct {
+	BaseGNode
+	s string
+}
+
+type NUnit struct {
+	BaseGNode
+}
+
 type NApp struct {
 	BaseGNode
 	fun *GAddr
@@ -470,6 +488,14 @@ const (
 
 //func (n *NInt) String() string {
 //	return "NInt " + strconv.Itoa(n.n)
+//}
+//
+//func (n *NString) String() string {
+//	return "NString " + n.s
+//}
+//
+//func (n *NUnit) String() string {
+//	return "NUnit"
 //}
 //
 //func (n *NApp) String() string {
@@ -507,6 +533,27 @@ type IPushInt struct {
 
 func (i *IPushInt) apply(m *GMachine) {
 	node := &NInt{n: i.n}
+	addr := m.allocNewNode(node)
+	m.stack.put(addr)
+}
+
+type IPushString struct {
+	BaseGInstr
+	s string
+}
+
+func (i *IPushString) apply(m *GMachine) {
+	node := &NString{s: i.s}
+	addr := m.allocNewNode(node)
+	m.stack.put(addr)
+}
+
+type IPushUnit struct {
+	BaseGInstr
+}
+
+func (i *IPushUnit) apply(m *GMachine) {
+	node := &NUnit{}
 	addr := m.allocNewNode(node)
 	m.stack.put(addr)
 }
@@ -576,6 +623,10 @@ func (i *IUnwind) apply(m *GMachine) {
 	case *NInd:
 		i.applyInd(m)
 	case *NInt:
+		i.applyReturn(m)
+	case *NString:
+		i.applyReturn(m)
+	case *NUnit:
 		i.applyReturn(m)
 	case *NData:
 		i.applyReturn(m)
@@ -651,6 +702,9 @@ type IUpdate struct {
 }
 
 func (i *IUpdate) apply(m *GMachine) {
+	if i.n < 1 {
+		return
+	}
 	addr := m.stack.get()
 	addrToReplace := m.stack.readNthFromTop(i.n)
 	if addr == nil || addrToReplace == nil {
@@ -912,4 +966,70 @@ type IPop struct {
 
 func (i *IPop) apply(m *GMachine) {
 	m.stack.popN(i.n)
+}
+
+type IIOFun struct {
+	BaseGInstr
+	fun string
+}
+
+func (i *IIOFun) apply(m *GMachine) {
+	switch i.fun {
+	case "return":
+		applyReturn()
+	case "putStr":
+		applyPutStr(m)
+	case "putInt":
+		applyPutInt(m)
+	case "getLine":
+		applyGetLine(m)
+	}
+}
+
+//////////////////////////////////// COMPILED FUNCTIONS ////////////////////////////////////
+
+func applyReturn() {
+	return
+}
+
+func applyPutStr(m *GMachine) {
+	a := m.stack.get()
+	if a == nil {
+		errFatal("Empty stack while trying to apply putStr")
+	}
+
+	node, ok := m.heap.get(a).(*NString)
+	if !ok {
+		errFatal("putStr arg address not pointing to an NString")
+	}
+
+	print(node.s)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func applyPutInt(m *GMachine) {
+	a := m.stack.get()
+	if a == nil {
+		errFatal("Empty stack while trying to apply putInt")
+	}
+
+	node, ok := m.heap.get(a).(*NInt)
+	if !ok {
+		errFatal("putStr arg address not pointing to an NInt")
+	}
+
+	print(node.n)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func applyGetLine(m *GMachine) {
+	var line string
+	fmt.Scanln(&line)
+
+	addr := m.allocNewNode(&NString{s: line})
+	m.stack.put(addr)
 }

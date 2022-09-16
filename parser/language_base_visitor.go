@@ -84,11 +84,19 @@ func (v *BaseLanguageVisitor) VisitParenType(ctx *ParenTypeContext) interface{} 
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseLanguageVisitor) VisitUnitType(ctx *UnitTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseLanguageVisitor) VisitDeclLhs(ctx *DeclLhsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BaseLanguageVisitor) VisitDeclExp(ctx *DeclExpContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitEDo(ctx *EDoContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -141,6 +149,18 @@ func (v *BaseLanguageVisitor) VisitParenExp(ctx *ParenExpContext) interface{} {
 }
 
 func (v *BaseLanguageVisitor) VisitTuple(ctx *TupleContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitStmtsList(ctx *StmtsListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitSExp(ctx *SExpContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitSAssign(ctx *SAssignContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

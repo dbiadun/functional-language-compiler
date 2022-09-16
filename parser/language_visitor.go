@@ -65,11 +65,17 @@ type LanguageVisitor interface {
 	// Visit a parse tree produced by LanguageParser#ParenType.
 	VisitParenType(ctx *ParenTypeContext) interface{}
 
+	// Visit a parse tree produced by LanguageParser#UnitType.
+	VisitUnitType(ctx *UnitTypeContext) interface{}
+
 	// Visit a parse tree produced by LanguageParser#DeclLhs.
 	VisitDeclLhs(ctx *DeclLhsContext) interface{}
 
 	// Visit a parse tree produced by LanguageParser#DeclExp.
 	VisitDeclExp(ctx *DeclExpContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#EDo.
+	VisitEDo(ctx *EDoContext) interface{}
 
 	// Visit a parse tree produced by LanguageParser#EMulDiv.
 	VisitEMulDiv(ctx *EMulDivContext) interface{}
@@ -109,6 +115,15 @@ type LanguageVisitor interface {
 
 	// Visit a parse tree produced by LanguageParser#Tuple.
 	VisitTuple(ctx *TupleContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#StmtsList.
+	VisitStmtsList(ctx *StmtsListContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#SExp.
+	VisitSExp(ctx *SExpContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#SAssign.
+	VisitSAssign(ctx *SAssignContext) interface{}
 
 	// Visit a parse tree produced by LanguageParser#Alternatives.
 	VisitAlternatives(ctx *AlternativesContext) interface{}

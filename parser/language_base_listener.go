@@ -135,6 +135,12 @@ func (s *BaseLanguageListener) EnterParenType(ctx *ParenTypeContext) {}
 // ExitParenType is called when production ParenType is exited.
 func (s *BaseLanguageListener) ExitParenType(ctx *ParenTypeContext) {}
 
+// EnterUnitType is called when production UnitType is entered.
+func (s *BaseLanguageListener) EnterUnitType(ctx *UnitTypeContext) {}
+
+// ExitUnitType is called when production UnitType is exited.
+func (s *BaseLanguageListener) ExitUnitType(ctx *UnitTypeContext) {}
+
 // EnterDeclLhs is called when production DeclLhs is entered.
 func (s *BaseLanguageListener) EnterDeclLhs(ctx *DeclLhsContext) {}
 
@@ -146,6 +152,12 @@ func (s *BaseLanguageListener) EnterDeclExp(ctx *DeclExpContext) {}
 
 // ExitDeclExp is called when production DeclExp is exited.
 func (s *BaseLanguageListener) ExitDeclExp(ctx *DeclExpContext) {}
+
+// EnterEDo is called when production EDo is entered.
+func (s *BaseLanguageListener) EnterEDo(ctx *EDoContext) {}
+
+// ExitEDo is called when production EDo is exited.
+func (s *BaseLanguageListener) ExitEDo(ctx *EDoContext) {}
 
 // EnterEMulDiv is called when production EMulDiv is entered.
 func (s *BaseLanguageListener) EnterEMulDiv(ctx *EMulDivContext) {}
@@ -224,6 +236,24 @@ func (s *BaseLanguageListener) EnterTuple(ctx *TupleContext) {}
 
 // ExitTuple is called when production Tuple is exited.
 func (s *BaseLanguageListener) ExitTuple(ctx *TupleContext) {}
+
+// EnterStmtsList is called when production StmtsList is entered.
+func (s *BaseLanguageListener) EnterStmtsList(ctx *StmtsListContext) {}
+
+// ExitStmtsList is called when production StmtsList is exited.
+func (s *BaseLanguageListener) ExitStmtsList(ctx *StmtsListContext) {}
+
+// EnterSExp is called when production SExp is entered.
+func (s *BaseLanguageListener) EnterSExp(ctx *SExpContext) {}
+
+// ExitSExp is called when production SExp is exited.
+func (s *BaseLanguageListener) ExitSExp(ctx *SExpContext) {}
+
+// EnterSAssign is called when production SAssign is entered.
+func (s *BaseLanguageListener) EnterSAssign(ctx *SAssignContext) {}
+
+// ExitSAssign is called when production SAssign is exited.
+func (s *BaseLanguageListener) ExitSAssign(ctx *SAssignContext) {}
 
 // EnterAlternatives is called when production Alternatives is entered.
 func (s *BaseLanguageListener) EnterAlternatives(ctx *AlternativesContext) {}

@@ -65,11 +65,17 @@ type LanguageListener interface {
 	// EnterParenType is called when entering the ParenType production.
 	EnterParenType(c *ParenTypeContext)
 
+	// EnterUnitType is called when entering the UnitType production.
+	EnterUnitType(c *UnitTypeContext)
+
 	// EnterDeclLhs is called when entering the DeclLhs production.
 	EnterDeclLhs(c *DeclLhsContext)
 
 	// EnterDeclExp is called when entering the DeclExp production.
 	EnterDeclExp(c *DeclExpContext)
+
+	// EnterEDo is called when entering the EDo production.
+	EnterEDo(c *EDoContext)
 
 	// EnterEMulDiv is called when entering the EMulDiv production.
 	EnterEMulDiv(c *EMulDivContext)
@@ -109,6 +115,15 @@ type LanguageListener interface {
 
 	// EnterTuple is called when entering the Tuple production.
 	EnterTuple(c *TupleContext)
+
+	// EnterStmtsList is called when entering the StmtsList production.
+	EnterStmtsList(c *StmtsListContext)
+
+	// EnterSExp is called when entering the SExp production.
+	EnterSExp(c *SExpContext)
+
+	// EnterSAssign is called when entering the SAssign production.
+	EnterSAssign(c *SAssignContext)
 
 	// EnterAlternatives is called when entering the Alternatives production.
 	EnterAlternatives(c *AlternativesContext)
@@ -197,11 +212,17 @@ type LanguageListener interface {
 	// ExitParenType is called when exiting the ParenType production.
 	ExitParenType(c *ParenTypeContext)
 
+	// ExitUnitType is called when exiting the UnitType production.
+	ExitUnitType(c *UnitTypeContext)
+
 	// ExitDeclLhs is called when exiting the DeclLhs production.
 	ExitDeclLhs(c *DeclLhsContext)
 
 	// ExitDeclExp is called when exiting the DeclExp production.
 	ExitDeclExp(c *DeclExpContext)
+
+	// ExitEDo is called when exiting the EDo production.
+	ExitEDo(c *EDoContext)
 
 	// ExitEMulDiv is called when exiting the EMulDiv production.
 	ExitEMulDiv(c *EMulDivContext)
@@ -241,6 +262,15 @@ type LanguageListener interface {
 
 	// ExitTuple is called when exiting the Tuple production.
 	ExitTuple(c *TupleContext)
+
+	// ExitStmtsList is called when exiting the StmtsList production.
+	ExitStmtsList(c *StmtsListContext)
+
+	// ExitSExp is called when exiting the SExp production.
+	ExitSExp(c *SExpContext)
+
+	// ExitSAssign is called when exiting the SAssign production.
+	ExitSAssign(c *SAssignContext)
 
 	// ExitAlternatives is called when exiting the Alternatives production.
 	ExitAlternatives(c *AlternativesContext)

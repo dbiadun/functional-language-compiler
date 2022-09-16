@@ -36,6 +36,40 @@ numbers = numbersFrom 0;
 nNumbers :: Int -> List Int;
 nNumbers n = take n numbers;
 
+putBool :: Bool -> IO ();
+putBool b = case b of {
+    True -> putStr "True";
+    False -> putStr "False";
+};
+
+printIntList :: List Int -> IO ();
+printIntList l = do {
+    putStr "[";
+    printIntListHelper l;
+    putStr "]";
+};
+
+printIntListHelper :: List Int -> IO ();
+printIntListHelper l = case l of {
+   Nil -> putStr "";
+   Cons x xs -> case xs of {
+       Nil -> putInt x;
+       l -> do {
+           putInt x;
+           putStr ", ";
+           printIntListHelper l;
+       };
+   };
+};
+
+getName :: IO String;
+getName = do {
+    putStr "What's your name?\n";
+    name <- getLine;
+    putStr "Thank you!\n";
+    return name;
+};
+
 sampleSumOfFirsts :: Int;
 sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
 
@@ -48,5 +82,25 @@ sampleTake = sum (take 4 (Cons 3 (Cons 2 (Cons 4 (Cons 6 (Cons 7 Nil)))))); -- 1
 sampleSumOfLasts :: Int; -- Checks the performance when many nodes are needed (garbage collection)
 sampleSumOfLasts = sum (map just (listOfLasts (map nNumbers (nNumbers 30))));
 
-main :: Int;
-main = sampleSumOfLasts;
+samplePrintList :: IO ();
+samplePrintList = do {
+    printIntList (nNumbers 20);
+    putStr "\n";
+};
+
+samplePrintInfList :: IO (); -- Should not stop
+samplePrintInfList = do {
+    printIntList numbers;
+    putStr "\n";
+};
+
+sampleGreeting :: IO ();
+sampleGreeting = do {
+    name <- getName;
+    putStr "Hi, ";
+    putStr name;
+    putStr "!\n";
+};
+
+main :: IO ();
+main = sampleGreeting;

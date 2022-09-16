@@ -111,6 +111,9 @@ func (c *TypeChecker) addBuiltins() {
 
 	stringDataType := &DataType{constr: "String", vars: []string{}}
 	c.definedTypes["String"] = stringDataType
+
+	ioDataType := &DataType{constr: "IO", vars: []string{"a"}}
+	c.definedTypes["IO"] = ioDataType
 }
 
 func getIntType() *FunType {
@@ -325,6 +328,8 @@ func (c *TypeChecker) changeParams(funType *FunType, paramTypeChar byte, substit
 				}
 			case *ParenType:
 				c.changeParams(aType.t.(*FunType), paramTypeChar, substitutions)
+			case *UnitType:
+				continue
 			}
 		}
 	}
@@ -353,6 +358,8 @@ func (c *TypeChecker) typeDeepCopy(oldType Type) *FunType {
 				aTypes = append(aTypes, &TupleType{types: types})
 			case *ParenType:
 				aTypes = append(aTypes, &ParenType{t: c.typeDeepCopy(oldAType.t)})
+			case *UnitType:
+				aTypes = append(aTypes, &UnitType{})
 			}
 		}
 		typeApp := &TypeApp{types: aTypes}
@@ -392,6 +399,8 @@ func (c *TypeChecker) applySubstitutions(t Type) {
 				}
 			case *ParenType:
 				c.applySubstitutions(aType.t)
+			case *UnitType:
+				continue
 			}
 		}
 	}
@@ -426,8 +435,42 @@ func (c *TypeChecker) printType(t Type) {
 				fmt.Print("(")
 				c.printType(aType.t)
 				fmt.Print(")")
+			case *UnitType:
+				fmt.Print("()")
 			}
 		}
+	}
+}
+
+//////////////////////////////////////// IO TYPES //////////////////////////////////////////
+
+func (c *TypeChecker) checkIOType(v ASTNode, t *FunType) *FunType {
+	// Checks if type is an IO operation and returns type of its result
+
+	c.applySubstitutions(t)
+	c.reduceParens(t)
+
+	bType := t.types[0]
+	typeApp := bType.(*TypeApp)
+
+	if len(typeApp.types) != 2 {
+		c.errFatal(v, "IO type needs exactly one parameter type")
+	}
+
+	constr := typeApp.types[0]
+	arg := typeApp.types[1]
+
+	conType, ok := constr.(*ConType)
+
+	if !ok || conType.id != "IO" {
+		c.errFatal(v, "Not an IO type")
+	}
+
+	switch arg := arg.(type) {
+	case *UnitType:
+		return nil
+	default:
+		return &FunType{types: []BType{&TypeApp{types: []AType{arg}}}}
 	}
 }
 
@@ -570,6 +613,8 @@ func (c *TypeChecker) checkATypeMatch(v ASTNode, validType AType, actualType ATy
 			c.checkTupleTypeMatch(v, validType, actualType, sameLevel)
 		case *ParenType:
 			c.checkParenTypeMatch(v, validType, actualType, sameLevel)
+		case *UnitType:
+			c.checkUnitTypeMatch(v, validType)
 		}
 	}
 }
@@ -635,6 +680,13 @@ func (c *TypeChecker) checkParenTypeMatch(v ASTNode, validType AType, actualType
 		validType := validType.(*ParenType)
 		c.checkTypeMatch(v, validType.t, actualType.t, sameLevel)
 	} else {
+		c.errFatal(v, "Types not matching (paren type with something else)")
+	}
+}
+
+func (c *TypeChecker) checkUnitTypeMatch(v ASTNode, validType AType) {
+	validType, ok := validType.(*UnitType)
+	if !ok {
 		c.errFatal(v, "Types not matching (paren type with something else)")
 	}
 }
@@ -778,7 +830,7 @@ func (c *TypeChecker) checkConstrType(v *ConstrType) *TypeCheckResult {
 
 	for _, arg := range v.args {
 		// argsCount is equal to 0, because type with parameters would be enclosed in parentheses
-		c.checkConstrDefAType(arg, 0)
+		c.checkConstrDefAType(arg, 0, len(v.args)+1, &ConType{id: v.constr}, true)
 	}
 
 	c.constrs[v.constr] = &ConstrInfo{c.context[CurDataType].(*DataType), v}
@@ -816,12 +868,12 @@ func (c *TypeChecker) checkConstrDefTypeApp(v *TypeApp) *TypeCheckResult {
 			// The first type has parameters (the rest of the types), so we need to check if its arity is valid
 			argsCount = len(v.types) - 1
 		}
-		c.checkConstrDefAType(t, argsCount)
+		c.checkConstrDefAType(t, argsCount, len(v.types), v.types[0], false)
 	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkConstrDefAType(v AType, argsCount int) *TypeCheckResult {
+func (c *TypeChecker) checkConstrDefAType(v AType, argsCount int, aTypesCount int, firstType AType, firstLevel bool) *TypeCheckResult {
 	switch v := v.(type) {
 	case *ConType:
 		c.checkConstrDefConType(v, argsCount)
@@ -831,6 +883,8 @@ func (c *TypeChecker) checkConstrDefAType(v AType, argsCount int) *TypeCheckResu
 		c.checkConstrDefTupleType(v, argsCount)
 	case *ParenType:
 		c.checkConstrDefParenType(v, argsCount)
+	case *UnitType:
+		c.checkConstrDefUnitType(v, aTypesCount, firstType, firstLevel)
 	}
 	return &TypeCheckResult{}
 }
@@ -877,6 +931,19 @@ func (c *TypeChecker) checkConstrDefParenType(v *ParenType, argsCount int) *Type
 	}
 
 	c.checkConstrDefType(v.t)
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkConstrDefUnitType(v *UnitType, aTypesCount int, firstType AType, firstLevel bool) *TypeCheckResult {
+	if firstLevel {
+		c.errFatal(v, "Unit type used as type parameter placeholder")
+	}
+
+	conType, ok := firstType.(*ConType)
+	if aTypesCount != 2 || !ok || conType.id != "IO" {
+		c.errFatal(v, "Unit type not used as the only IO arg")
+	}
+
 	return &TypeCheckResult{}
 }
 
@@ -1020,12 +1087,12 @@ func (c *TypeChecker) checkTypeApp(v *TypeApp) *TypeCheckResult {
 		if i == 0 {
 			argsCount = len(v.types) - 1
 		}
-		c.checkAType(t, argsCount)
+		c.checkAType(t, argsCount, len(v.types), v.types[0])
 	}
 	return &TypeCheckResult{}
 }
 
-func (c *TypeChecker) checkAType(v AType, argsCount int) *TypeCheckResult {
+func (c *TypeChecker) checkAType(v AType, argsCount int, aTypesCount int, firstType AType) *TypeCheckResult {
 	switch v := v.(type) {
 	case *ConType:
 		c.checkConType(v, argsCount)
@@ -1035,6 +1102,8 @@ func (c *TypeChecker) checkAType(v AType, argsCount int) *TypeCheckResult {
 		c.checkTupleType(v, argsCount)
 	case *ParenType:
 		c.checkParenType(v, argsCount)
+	case *UnitType:
+		c.checkUnitType(v, aTypesCount, firstType)
 	}
 	return &TypeCheckResult{}
 }
@@ -1079,6 +1148,15 @@ func (c *TypeChecker) checkParenType(v *ParenType, argsCount int) *TypeCheckResu
 		c.errFatal(v, "Parentheses type can't have any parameters")
 	}
 	c.checkType(v.t)
+	return &TypeCheckResult{}
+}
+
+func (c *TypeChecker) checkUnitType(v *UnitType, aTypesCount int, firstType AType) *TypeCheckResult {
+	conType, ok := firstType.(*ConType)
+	if aTypesCount != 2 || !ok || conType.id != "IO" {
+		c.errFatal(v, "Unit type not used as the only IO arg")
+	}
+
 	return &TypeCheckResult{}
 }
 
@@ -1134,6 +1212,8 @@ func (c *TypeChecker) checkExp(v Exp) *TypeCheckResult {
 	switch v := v.(type) {
 	case *EFun:
 		return c.checkEFun(v)
+	case *EDo:
+		return c.checkEDo(v)
 	case *ECase:
 		return c.checkECase(v)
 	case *EMul:
@@ -1154,6 +1234,10 @@ func (c *TypeChecker) checkExp(v Exp) *TypeCheckResult {
 
 func (c *TypeChecker) checkEFun(v *EFun) *TypeCheckResult {
 	return c.checkFExp(v.fExp)
+}
+
+func (c *TypeChecker) checkEDo(v *EDo) *TypeCheckResult {
+	return c.checkStmts(v.stmts)
 }
 
 func (c *TypeChecker) checkECase(v *ECase) *TypeCheckResult {
@@ -1342,6 +1426,68 @@ func (c *TypeChecker) checkTuple(v *Tuple) *TypeCheckResult {
 	funType := &FunType{types: []BType{typeApp}}
 
 	return &TypeCheckResult{funType}
+}
+
+func (c *TypeChecker) checkStmts(v Stmts) *TypeCheckResult {
+	return c.checkStmtsList(v.(*StmtsList))
+}
+
+func (c *TypeChecker) checkStmtsList(v *StmtsList) *TypeCheckResult {
+	var changeBackups []*ChangeBackup
+
+	for _, stmt := range v.statements {
+		backup := c.checkStmt(stmt)
+		changeBackups = append(changeBackups, backup)
+	}
+	res := c.checkExp(v.exp)
+	c.checkIOType(v.exp, res.t)
+
+	for i := len(changeBackups) - 1; i >= 0; i-- {
+		c.revertTypes(changeBackups[i])
+	}
+
+	return res
+}
+
+func (c *TypeChecker) checkStmt(v Stmt) *ChangeBackup {
+	switch v := v.(type) {
+	case *SExp:
+		return c.checkSExp(v)
+	case *SAssign:
+		return c.checkSAssign(v)
+	}
+
+	return &ChangeBackup{make(map[string]*FunType), make(map[string]void)}
+}
+
+func (c *TypeChecker) checkSExp(v *SExp) *ChangeBackup {
+	ioType := c.checkExp(v.exp).t
+	c.checkIOType(v, ioType)
+
+	return &ChangeBackup{make(map[string]*FunType), make(map[string]void)}
+}
+
+func (c *TypeChecker) checkSAssign(v *SAssign) *ChangeBackup {
+	pat := v.pat
+	patArg, ok := pat.(*PatArg)
+	if !ok {
+		c.errFatal(v, "Complex pattern in statement result assignment")
+	}
+
+	aPat := patArg.arg
+	aPatVar, ok := aPat.(*APatVar)
+	if !ok {
+		c.errFatal(v, "Complex pattern in statement result assignment")
+	}
+
+	varName := aPatVar.id
+
+	ioType := c.checkExp(v.exp).t
+	resType := c.checkIOType(v, ioType)
+
+	changeBackup := c.setTypes([]string{varName}, []*FunType{resType})
+
+	return changeBackup
 }
 
 func (c *TypeChecker) checkAlternative(v *Alternative, caseType *FunType) *TypeCheckResult {

@@ -240,6 +240,7 @@ func (s *InstrScheme) create(args ...string) *Instr {
 func (g *CodeGenerator) initInstrSchemes() {
 	g.instrSchemes = make(map[int]*InstrScheme)
 	g.instrSchemes[cPushInt] = &InstrScheme{"IPushInt", []string{"n"}}
+	g.instrSchemes[cPushString] = &InstrScheme{"IPushString", []string{"s"}}
 	g.instrSchemes[cPushGlobal] = &InstrScheme{"IPushGlobal", []string{"f"}}
 	g.instrSchemes[cPush] = &InstrScheme{"IPush", []string{"n"}}
 	g.instrSchemes[cMkApp] = &InstrScheme{"IMkApp", []string{}}
@@ -257,6 +258,7 @@ func (g *CodeGenerator) initInstrSchemes() {
 
 const (
 	cPushInt = iota
+	cPushString
 	cPushGlobal
 	cPush
 	cMkApp
@@ -414,6 +416,8 @@ func (g *CodeGenerator) genExp(v Exp) {
 	switch v := v.(type) {
 	case *EFun:
 		g.genEFun(v)
+	case *EDo:
+		g.genEDo(v)
 	case *ECase:
 		g.genECase(v)
 	case *EMul:
@@ -433,6 +437,10 @@ func (g *CodeGenerator) genExp(v Exp) {
 
 func (g *CodeGenerator) genEFun(v *EFun) {
 	g.genFExp(v.fExp, 0)
+}
+
+func (g *CodeGenerator) genEDo(v *EDo) {
+	g.genStmts(v.stmts)
 }
 
 func (g *CodeGenerator) genECase(v *ECase) {
@@ -543,8 +551,65 @@ func (g *CodeGenerator) genLiteral(v Literal) {
 	case *Char:
 		errFatal(v, "Chars not supported by runtime yet")
 	case *String:
-		errFatal(v, "Strings not supported by runtime yet")
+		g.pushInstr(cPushString, fmt.Sprintf("%q", v.s))
+		g.env.changeStackSize(1)
 	}
+}
+
+func (g *CodeGenerator) genStmts(v Stmts) {
+	stmtsList := v.(*StmtsList)
+
+	var backups []*EnvBackup
+	envChanges := 0
+
+	for _, stmt := range stmtsList.statements {
+		backup := g.genStmt(stmt)
+		backups = append(backups, backup)
+		envChanges += backup.size()
+	}
+	g.genExp(stmtsList.exp)
+
+	// Remove all variables from do from the stack
+	g.pushInstr(cSlide, fmt.Sprintf("%d", envChanges))
+
+	for i := len(backups) - 1; i >= 0; i-- {
+		g.env.revertChange(backups[i])
+	}
+}
+
+func (g *CodeGenerator) genStmt(v Stmt) *EnvBackup {
+	switch v := v.(type) {
+	case *SExp:
+		return g.genSExp(v)
+	case *SAssign:
+		return g.genSAssign(v)
+	}
+
+	return &EnvBackup{changed: make(map[string]int)}
+}
+
+func (g *CodeGenerator) genSExp(v *SExp) *EnvBackup {
+	g.genExp(v.exp)
+	g.pushInstr(cEval)
+
+	// Even if exp is of type `IO ()`, evaluating it leaves unit value at the stack
+	g.pushInstr(cPop, "1")
+	g.env.changeStackSize(-1)
+
+	return &EnvBackup{changed: make(map[string]int)}
+}
+
+func (g *CodeGenerator) genSAssign(v *SAssign) *EnvBackup {
+	varName := v.pat.(*PatArg).arg.(*APatVar).id
+
+	g.genExp(v.exp)
+	g.pushInstr(cEval)
+
+	// We need to decrease stored stack size, to save the correct variable location
+	g.env.changeStackSize(-1)
+	backup := g.env.applyChange([]string{varName})
+
+	return backup
 }
 
 func (g *CodeGenerator) genAlternative(v *Alternative) (int, []*Instr) {
@@ -633,8 +698,7 @@ func (g *CodeGenerator) genOutput() string {
 		res.WriteString(fmt.Sprintf("gMachine.addGlobal(%q, %d, %s)\n", f, g.functionArities[f], showCode(code)))
 	}
 
-	res.WriteString("res := gMachine.run()\n")
-	res.WriteString("println(res)\n")
+	res.WriteString("gMachine.run()\n")
 
 	res.WriteString("}\n")
 

@@ -258,6 +258,13 @@ func (v *BuildASTVisitor) VisitParenType(ctx *parser.ParenTypeContext) interface
 	return r
 }
 
+func (v *BuildASTVisitor) VisitUnitType(ctx *parser.UnitTypeContext) interface{} {
+	r := new(UnitType)
+	r.setPosFromCtx(ctx)
+
+	return r
+}
+
 // funlhs
 
 func (v *BuildASTVisitor) VisitDeclLhs(ctx *parser.DeclLhsContext) interface{} {
@@ -295,6 +302,15 @@ func (v *BuildASTVisitor) VisitEFun(ctx *parser.EFunContext) interface{} {
 	r.setPosFromCtx(ctx)
 
 	r.fExp = ctx.Fexp().Accept(v).(FExp)
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitEDo(ctx *parser.EDoContext) interface{} {
+	r := new(EDo)
+	r.setPosFromCtx(ctx)
+
+	r.stmts = ctx.Stmts().Accept(v).(Stmts)
 
 	return r
 }
@@ -460,6 +476,42 @@ func (v *BuildASTVisitor) VisitTuple(ctx *parser.TupleContext) interface{} {
 	return r
 }
 
+// stmts
+
+func (v *BuildASTVisitor) VisitStmtsList(ctx *parser.StmtsListContext) interface{} {
+	r := new(StmtsList)
+	r.setPosFromCtx(ctx)
+
+	for _, stmt := range ctx.AllStmt() {
+		r.statements = append(r.statements, stmt.Accept(v).(Stmt))
+	}
+
+	r.exp = ctx.Exp().Accept(v).(Exp)
+
+	return r
+}
+
+// stmt
+
+func (v *BuildASTVisitor) VisitSExp(ctx *parser.SExpContext) interface{} {
+	r := new(SExp)
+	r.setPosFromCtx(ctx)
+
+	r.exp = ctx.Exp().Accept(v).(Exp)
+
+	return r
+}
+
+func (v *BuildASTVisitor) VisitSAssign(ctx *parser.SAssignContext) interface{} {
+	r := new(SAssign)
+	r.setPosFromCtx(ctx)
+
+	r.pat = ctx.Pat().Accept(v).(Pat)
+	r.exp = ctx.Exp().Accept(v).(Exp)
+
+	return r
+}
+
 // alts
 
 func (v *BuildASTVisitor) VisitAlternatives(ctx *parser.AlternativesContext) interface{} {
@@ -572,6 +624,7 @@ func (v *BuildASTVisitor) VisitString(ctx *parser.StringContext) interface{} {
 	r.setPosFromCtx(ctx)
 
 	s := ctx.GetText()
+	s = strings.ReplaceAll(s, "\\n", "\n")
 	r.s = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
 
 	return r
