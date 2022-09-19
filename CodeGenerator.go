@@ -374,6 +374,7 @@ func (g *CodeGenerator) genFunTopDecl(v *FunTopDecl) {
 func (g *CodeGenerator) genFunDecl(v *FunDecl) {
 	declLhs := v.lhs.(*DeclLhs)
 	funName := declLhs.fun
+	isIO := v.getIsIO()
 
 	g.reset()
 
@@ -387,8 +388,16 @@ func (g *CodeGenerator) genFunDecl(v *FunDecl) {
 	g.genRhs(v.rhs)
 
 	argsCount := len(declLhs.args)
-	g.pushInstr(cUpdate, fmt.Sprintf("%d", argsCount))
-	g.pushInstr(cPop, fmt.Sprintf("%d", argsCount))
+
+	if isIO {
+		g.pushInstr(cSlide, fmt.Sprintf("%d", argsCount+1))
+
+		// We need it to prevent from exiting the program
+		g.pushInstr(cUnwind)
+	} else {
+		g.pushInstr(cUpdate, fmt.Sprintf("%d", argsCount))
+		g.pushInstr(cPop, fmt.Sprintf("%d", argsCount))
+	}
 
 	g.functionArities[funName] = argsCount
 	g.saveFunction(funName)
@@ -399,9 +408,19 @@ func (g *CodeGenerator) genVarDecl(v *VarDecl) {
 	aPat := patArg.arg
 	variable := aPat.(*APatVar)
 	funName := variable.id
+	isIO := v.getIsIO()
 
 	g.reset()
 	g.genRhs(v.rhs)
+
+	if isIO {
+		g.pushInstr(cSlide, "1")
+
+		// We need it to prevent from exiting the program
+		g.pushInstr(cUnwind)
+	} else {
+		g.pushInstr(cUpdate, "0")
+	}
 
 	g.functionArities[funName] = 0
 	g.saveFunction(funName)
@@ -568,6 +587,10 @@ func (g *CodeGenerator) genStmts(v Stmts) {
 		envChanges += backup.size()
 	}
 	g.genExp(stmtsList.exp)
+
+	// We omit the following eval to get effective tail calls.
+	// The last expression is evaluated later (in many cases after cleaning the stack at the end of a function)
+	// g.pushInstr(cEval)
 
 	// Remove all variables from do from the stack
 	g.pushInstr(cSlide, fmt.Sprintf("%d", envChanges))

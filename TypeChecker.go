@@ -474,6 +474,24 @@ func (c *TypeChecker) checkIOType(v ASTNode, t *FunType) *FunType {
 	}
 }
 
+func (c *TypeChecker) funIsIO(fun string) bool {
+	t, ok := c.types[fun]
+	if !ok {
+		return false
+	}
+
+	bType := t.types[len(t.types)-1]
+	typeApp := bType.(*TypeApp)
+	aType := typeApp.types[0]
+
+	conType, ok := aType.(*ConType)
+	if !ok {
+		return false
+	}
+
+	return conType.id == "IO"
+}
+
 ///////////////////////////////////// TYPES MATCHING ///////////////////////////////////////
 
 // When matching we allow substitution of parameter types.
@@ -976,6 +994,11 @@ func (c *TypeChecker) checkFunDecl(v *FunDecl) *TypeCheckResult {
 	if lastCheck {
 		c.context[CurTypeSubstitutions] = &TypeSubstitutions{subst: make(map[string]*FunType)}
 
+		// We need to mark if function returns an IO operation for the code generator
+		funName := v.lhs.(*DeclLhs).fun
+		isIO := c.funIsIO(funName)
+		v.setIsIO(isIO)
+
 		// Should set CurChangeBackup and CurValidRhsType
 		c.checkFunLhs(v.lhs)
 
@@ -996,6 +1019,11 @@ func (c *TypeChecker) checkVarDecl(v *VarDecl) *TypeCheckResult {
 
 	if lastCheck {
 		c.context[CurTypeSubstitutions] = &TypeSubstitutions{subst: make(map[string]*FunType)}
+
+		// We need to mark if function returns an IO operation for the code generator
+		funName := v.pat.(*PatArg).arg.(*APatVar).id
+		isIO := c.funIsIO(funName)
+		v.setIsIO(isIO)
 
 		var lhsType *FunType
 		pat, ok := v.pat.(*PatArg)

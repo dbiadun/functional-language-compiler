@@ -70,6 +70,34 @@ getName = do {
     return name;
 };
 
+loop :: IO a -> IO a;
+loop action = do {
+    action;
+    loop action;
+};
+
+printHello :: IO ();
+printHello = putStr "Hello\n";
+
+printNumbersFrom :: Int -> IO ();
+printNumbersFrom n = do {
+    putInt n;
+    putStr "\n";
+    printNumbersFrom (n + 1);
+};
+
+forInf :: Int -> (Int -> IO ()) -> IO ();
+forInf n fun = do {
+    fun n;
+    forInf (n + 1) fun;
+};
+
+putIntLine :: Int -> IO ();
+putIntLine n = do {
+    putInt n;
+    putStr "\n";
+};
+
 sampleSumOfFirsts :: Int;
 sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
 
@@ -102,5 +130,11 @@ sampleGreeting = do {
     putStr "!\n";
 };
 
+samplePrintNumbers :: IO ();
+samplePrintNumbers = printNumbersFrom 0;
+
+sampleInfiniteFor :: IO ();
+sampleInfiniteFor = forInf 0 putIntLine;
+
 main :: IO ();
-main = sampleGreeting;
+main = sampleInfiniteFor;

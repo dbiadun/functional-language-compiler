@@ -149,6 +149,23 @@ type BaseDecl struct {
 
 func (*BaseDecl) decl() {}
 
+type MaybeIO interface {
+	setIsIO(bool)
+	getIsIO() bool
+}
+
+type BaseMaybeIO struct {
+	isIO bool
+}
+
+func (f *BaseMaybeIO) setIsIO(b bool) {
+	f.isIO = b
+}
+
+func (f *BaseMaybeIO) getIsIO() bool {
+	return f.isIO
+}
+
 type FunTypeDecl struct {
 	BaseDecl
 	d GenDecl
@@ -156,12 +173,14 @@ type FunTypeDecl struct {
 
 type FunDecl struct {
 	BaseDecl
+	BaseMaybeIO
 	lhs FunLhs
 	rhs Rhs
 }
 
 type VarDecl struct {
 	BaseDecl
+	BaseMaybeIO
 	pat Pat
 	rhs Rhs
 }

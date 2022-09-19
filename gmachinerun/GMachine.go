@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 )
 
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
@@ -78,10 +79,10 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("&&", 2, m.createFunInstructions(2, &ILogOp{op: "&&"}))
 	m.addGlobal("||", 2, m.createFunInstructions(2, &ILogOp{op: "||"}))
 
-	m.addGlobal("return", 1, m.createFunInstructions(1, &IIOFun{fun: "return"}))
-	m.addGlobal("putStr", 1, m.createFunInstructions(1, &IIOFun{fun: "putStr"}))
-	m.addGlobal("putInt", 1, m.createFunInstructions(1, &IIOFun{fun: "putInt"}))
-	m.addGlobal("getLine", 0, m.createFunInstructions(0, &IIOFun{fun: "getLine"}))
+	m.addGlobal("return", 1, m.createIOFunInstructions(1, &IIOFun{fun: "return"}))
+	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putStr"}))
+	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putInt"}))
+	m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: "getLine"}))
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
@@ -93,6 +94,23 @@ func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
 	instrs = append(instrs, funInstr)
 	instrs = append(instrs, &IUpdate{n: arity})
 	instrs = append(instrs, &IPop{n: arity})
+	instrs = append(instrs, &IUnwind{})
+
+	return instrs
+}
+
+func (m *GMachine) createIOFunInstructions(arity int, funInstr GInstr) []GInstr {
+	var instrs []GInstr
+	for i := 0; i < arity; i++ {
+		instrs = append(instrs, &IPush{n: arity - 1})
+		instrs = append(instrs, &IEval{})
+	}
+	instrs = append(instrs, funInstr)
+
+	// We can't update the node corresponding to an IO function, because it may need to evaluate more than once
+	instrs = append(instrs, &ISlide{n: arity + 1})
+
+	// We need it to prevent from exiting the program
 	instrs = append(instrs, &IUnwind{})
 
 	return instrs
@@ -486,33 +504,33 @@ const (
 	boolTrueTag  = 1
 )
 
-//func (n *NInt) String() string {
-//	return "NInt " + strconv.Itoa(n.n)
-//}
-//
-//func (n *NString) String() string {
-//	return "NString " + n.s
-//}
-//
-//func (n *NUnit) String() string {
-//	return "NUnit"
-//}
-//
-//func (n *NApp) String() string {
-//	return "NApp"
-//}
-//
-//func (n *NGlobal) String() string {
-//	return "NGlobal " + strconv.Itoa(n.argsNum)
-//}
-//
-//func (n *NInd) String() string {
-//	return "NInd"
-//}
-//
-//func (n *NData) String() string {
-//	return "NData " + strconv.Itoa(n.tag)
-//}
+func (n *NInt) String() string {
+	return "NInt " + strconv.Itoa(n.n)
+}
+
+func (n *NString) String() string {
+	return "NString " + n.s
+}
+
+func (n *NUnit) String() string {
+	return "NUnit"
+}
+
+func (n *NApp) String() string {
+	return "NApp"
+}
+
+func (n *NGlobal) String() string {
+	return "NGlobal " + strconv.Itoa(n.argsNum)
+}
+
+func (n *NInd) String() string {
+	return "NInd"
+}
+
+func (n *NData) String() string {
+	return "NData " + strconv.Itoa(n.tag)
+}
 
 ////////////////////////////////////// INSTRUCTIONS ////////////////////////////////////////
 
@@ -669,6 +687,8 @@ func (i *IUnwind) applyGlobal(m *GMachine) {
 	if n > 0 {
 		m.stack.put(lastAddr)
 		m.stack.putN(appAddrs)
+	} else {
+		m.stack.put(addr)
 	}
 
 	// TODO: check if cleaning the queue before isn't needed
@@ -702,7 +722,7 @@ type IUpdate struct {
 }
 
 func (i *IUpdate) apply(m *GMachine) {
-	if i.n < 1 {
+	if i.n < 0 {
 		return
 	}
 	addr := m.stack.get()
