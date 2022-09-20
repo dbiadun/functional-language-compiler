@@ -98,6 +98,14 @@ putIntLine n = do {
     putStr "\n";
 };
 
+blink :: Int -> Int -> IO ();
+blink led time = do {
+    tinyHigh led;
+    tinySleep (time / 2);
+    tinyLow led;
+    tinySleep (time / 2);
+};
+
 sampleSumOfFirsts :: Int;
 sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
 
@@ -136,5 +144,13 @@ samplePrintNumbers = printNumbersFrom 0;
 sampleInfiniteFor :: IO ();
 sampleInfiniteFor = forInf 0 putIntLine;
 
+sampleBlinkingLed :: IO ();
+sampleBlinkingLed = do {
+    led <- tinyLED;
+    outputMode <- tinyPinOutput;
+    tinyConfigure led outputMode;
+    loop (blink led 1000);
+};
+
 main :: IO ();
-main = sampleInfiniteFor;
+main = sampleBlinkingLed;

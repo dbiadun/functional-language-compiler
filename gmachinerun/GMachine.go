@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"strconv"
-)
-
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
 type GMachine struct {
@@ -83,6 +78,16 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putStr"}))
 	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putInt"}))
 	m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: "getLine"}))
+
+	m.addGlobal("tinySleep", 1, m.createIOFunInstructions(1, &IIOFun{fun: "tinySleep"}))
+
+	m.addGlobal("tinyLED", 0, m.createIOFunInstructions(0, &IIOFun{fun: "tinyLED"}))
+
+	m.addGlobal("tinyConfigure", 2, m.createIOFunInstructions(2, &IIOFun{fun: "tinyConfigure"}))
+	m.addGlobal("tinyPinOutput", 0, m.createIOFunInstructions(0, &IIOFun{fun: "tinyPinOutput"}))
+
+	m.addGlobal("tinyLow", 1, m.createIOFunInstructions(1, &IIOFun{fun: "tinyLow"}))
+	m.addGlobal("tinyHigh", 1, m.createIOFunInstructions(1, &IIOFun{fun: "tinyHigh"}))
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
@@ -504,33 +509,33 @@ const (
 	boolTrueTag  = 1
 )
 
-func (n *NInt) String() string {
-	return "NInt " + strconv.Itoa(n.n)
-}
-
-func (n *NString) String() string {
-	return "NString " + n.s
-}
-
-func (n *NUnit) String() string {
-	return "NUnit"
-}
-
-func (n *NApp) String() string {
-	return "NApp"
-}
-
-func (n *NGlobal) String() string {
-	return "NGlobal " + strconv.Itoa(n.argsNum)
-}
-
-func (n *NInd) String() string {
-	return "NInd"
-}
-
-func (n *NData) String() string {
-	return "NData " + strconv.Itoa(n.tag)
-}
+//func (n *NInt) String() string {
+//	return "NInt " + strconv.Itoa(n.n)
+//}
+//
+//func (n *NString) String() string {
+//	return "NString " + n.s
+//}
+//
+//func (n *NUnit) String() string {
+//	return "NUnit"
+//}
+//
+//func (n *NApp) String() string {
+//	return "NApp"
+//}
+//
+//func (n *NGlobal) String() string {
+//	return "NGlobal " + strconv.Itoa(n.argsNum)
+//}
+//
+//func (n *NInd) String() string {
+//	return "NInd"
+//}
+//
+//func (n *NData) String() string {
+//	return "NData " + strconv.Itoa(n.tag)
+//}
 
 ////////////////////////////////////// INSTRUCTIONS ////////////////////////////////////////
 
@@ -1001,55 +1006,19 @@ func (i *IIOFun) apply(m *GMachine) {
 		applyPutStr(m)
 	case "putInt":
 		applyPutInt(m)
-	case "getLine":
-		applyGetLine(m)
+		//case "getLine":
+		//	applyGetLine(m)
+	case "tinySleep":
+		applyTinySleep(m)
+	case "tinyLED":
+		applyTinyLED(m)
+	case "tinyConfigure":
+		applyTinyConfigure(m)
+	case "tinyPinOutput":
+		applyTinyPinOutput(m)
+	case "tinyLow":
+		applyTinyLow(m)
+	case "tinyHigh":
+		applyTinyHigh(m)
 	}
-}
-
-//////////////////////////////////// COMPILED FUNCTIONS ////////////////////////////////////
-
-func applyReturn() {
-	return
-}
-
-func applyPutStr(m *GMachine) {
-	a := m.stack.get()
-	if a == nil {
-		errFatal("Empty stack while trying to apply putStr")
-	}
-
-	node, ok := m.heap.get(a).(*NString)
-	if !ok {
-		errFatal("putStr arg address not pointing to an NString")
-	}
-
-	print(node.s)
-
-	addr := m.allocNewNode(&NUnit{})
-	m.stack.put(addr)
-}
-
-func applyPutInt(m *GMachine) {
-	a := m.stack.get()
-	if a == nil {
-		errFatal("Empty stack while trying to apply putInt")
-	}
-
-	node, ok := m.heap.get(a).(*NInt)
-	if !ok {
-		errFatal("putStr arg address not pointing to an NInt")
-	}
-
-	print(node.n)
-
-	addr := m.allocNewNode(&NUnit{})
-	m.stack.put(addr)
-}
-
-func applyGetLine(m *GMachine) {
-	var line string
-	fmt.Scanln(&line)
-
-	addr := m.allocNewNode(&NString{s: line})
-	m.stack.put(addr)
 }
