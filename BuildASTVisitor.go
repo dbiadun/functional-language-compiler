@@ -625,6 +625,7 @@ func (v *BuildASTVisitor) VisitString(ctx *parser.StringContext) interface{} {
 
 	s := ctx.GetText()
 	s = strings.ReplaceAll(s, "\\n", "\n")
+	s = strings.ReplaceAll(s, "\\r", "\r")
 	r.s = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
 
 	return r

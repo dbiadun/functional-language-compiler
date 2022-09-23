@@ -82,7 +82,7 @@ func (c *Compiler) emitGCode(outputFile string) {
 
 func (c *Compiler) compileGCode(inputDirectory string) {
 	cmd := exec.Command("tinygo", "build", "-size", "full", "-target=feather-nrf52840-sense", "-o", "./gmachinerun/output", inputDirectory)
-	stdout, err := cmd.Output()
+	stdout, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(err)
 	}

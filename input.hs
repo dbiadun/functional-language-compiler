@@ -18,6 +18,12 @@ add a b = a + b;
 sum :: List Int -> Int;
 sum = foldl add 0;
 
+just :: Maybe Int -> Int;
+just x = case x of {
+    Just n -> n;
+    Nothing -> 0;
+};
+
 sumOfFirsts :: List (List Int) -> Int;
 sumOfFirsts l = sum (map just (listOfFirsts l));
 
@@ -92,6 +98,18 @@ forInf n fun = do {
     forInf (n + 1) fun;
 };
 
+for :: Int -> Int -> (Int -> IO ()) -> IO ();
+for i n fun = case i < n of {
+    False -> putStr "";
+    True -> do {
+        fun i;
+        for (i + 1) n fun
+    };
+};
+
+takeInt :: IO () -> (Int -> IO ());
+takeInt action n = action;
+
 putIntLine :: Int -> IO ();
 putIntLine n = do {
     putInt n;
@@ -100,11 +118,35 @@ putIntLine n = do {
 
 blink :: Int -> Int -> IO ();
 blink led time = do {
+    halfTime <- return (time / 2);
+    singleSleep <- return (halfTime / 10);
+
+    -- We use many short sleeps to enable good interruption handling
     tinyHigh led;
-    tinySleep (time / 2);
+    for 0 singleSleep (takeInt (tinySleep 10));
     tinyLow led;
-    tinySleep (time / 2);
+    for 0 singleSleep (takeInt (tinySleep 10));
 };
+
+not :: Bool -> Bool;
+not b = case b of {
+    True -> False;
+    False -> True;
+};
+
+checkButton :: Int -> Int -> IO ();
+checkButton button led = do {
+    -- We assume pullup button configuration
+    putStr "INTERRUPTION\n\r";
+    buttonNotPressed <- tinyGet button;
+    case not buttonNotPressed of {
+        True -> tinyHigh led;
+        False -> tinyLow led;
+    };
+};
+
+checkButtonCallback :: Int -> Int -> Int -> IO ();
+checkButtonCallback button led pin = checkButton button led;
 
 sampleSumOfFirsts :: Int;
 sampleSumOfFirsts = sumOfFirsts (Cons (Cons 4 (Cons 7 Nil)) (Cons Nil (Cons (Cons 2 (Cons 3 Nil)) Nil)));
@@ -152,5 +194,42 @@ sampleBlinkingLed = do {
     loop (blink led 1000);
 };
 
+sampleSimpleButton :: IO ();
+sampleSimpleButton = do {
+    led <- tinyLED;
+    led2 <- tinyLED2;
+    button <- tinyBUTTON;
+
+    outputMode <- tinyPinOutput;
+    inputMode <- tinyPinInputPullup;
+
+    tinyConfigure led outputMode;
+    tinyConfigure led2 outputMode;
+    tinyConfigure button inputMode;
+
+    loop (checkButton button led2);
+};
+
+sampleInterruptionButton :: IO ();
+sampleInterruptionButton = do {
+    led <- tinyLED;
+    led2 <- tinyLED2;
+    button <- tinyBUTTON;
+
+    outputMode <- tinyPinOutput;
+    inputMode <- tinyPinInputPullup;
+
+    tinyConfigure led outputMode;
+    tinyConfigure led2 outputMode;
+    tinyConfigure button inputMode;
+
+    toggleChange <- tinyPinToggle;
+
+    tinySetInterrupt button toggleChange (checkButtonCallback button led);
+
+    --loop (putStr "");
+    loop (blink led2 500);
+};
+
 main :: IO ();
-main = sampleBlinkingLed;
+main = sampleInterruptionButton;
