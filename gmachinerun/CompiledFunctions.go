@@ -2,6 +2,10 @@ package main
 
 import "machine"
 import "time"
+import "device/nrf"
+import "runtime/interrupt"
+
+var timerCallbackActions [5]*GAddr
 
 func applyReturn(_ *GMachine) {
 	return
@@ -232,12 +236,11 @@ func applyTinySetInterrupt(m *GMachine) {
 
 	pin := machine.Pin(pinNum.n)
 	pinChange := machine.PinChange(pinChangeNum.n)
-	//funIntAddr := aFun.a
 
 	callback := func(p machine.Pin) {
 		interruptionData := InterruptionData{aFun, int(p)}
 		select {
-		case m.interruptions <- interruptionData:
+		case interruptions <- interruptionData:
 		default:
 		}
 	}
@@ -246,4 +249,140 @@ func applyTinySetInterrupt(m *GMachine) {
 
 	addr := m.allocNewNode(&NUnit{})
 	m.stack.put(addr)
+}
+
+func applyTinySetTimer(m *GMachine) {
+	aTimerNum := m.stack.get()
+	aDuration := m.stack.get()
+	aAction := m.stack.get()
+
+	if aTimerNum == nil || aDuration == nil || aAction == nil {
+		errFatal("Empty stack while trying to apply tinySetTimer")
+	}
+
+	timerNum, ok1 := m.heap.get(aTimerNum).(*NInt)
+	duration, ok2 := m.heap.get(aDuration).(*NInt)
+	action := m.heap.get(aAction)
+
+	if !ok1 || !ok2 || action == nil {
+		errFatal("tinySetTimer arg address not pointing to a proper node type")
+	}
+
+	timerCallbackActions[timerNum.n] = aAction
+	m.interruptionCallbacks = append(m.interruptionCallbacks, aAction)
+
+	timer := getTimer(timerNum.n)
+
+	timer.SetTASKS_STOP(nrf.TIMER_TASKS_STOP_TASKS_STOP_Trigger)
+
+	timer.SetPRESCALER(4)                                                   // 16Mhz / 2^4 = 1Mhz = 1_000_000 ticks per second
+	timer.SetBITMODE(nrf.TIMER_BITMODE_BITMODE_32Bit)                       // 32 bits for timer width
+	timer.SetCC(0, uint32(duration.n))                                      // One capture every `duration` microseconds
+	timer.SetSHORTS_COMPARE0_CLEAR(nrf.TIMER_SHORTS_COMPARE0_CLEAR_Enabled) // Set clearing the timer after hitting wanted value
+	timer.SetINTENSET_COMPARE0(nrf.TIMER_INTENSET_COMPARE0_Set)             // Enable interrupt
+
+	intr := newTimerInterrupt(timerNum.n)
+	intr.SetPriority(0xc0)
+	intr.Enable()
+
+	timer.SetTASKS_CLEAR(nrf.TIMER_TASKS_CLEAR_TASKS_CLEAR_Trigger)
+	timer.SetTASKS_START(nrf.TIMER_TASKS_START_TASKS_START_Trigger)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func newTimerInterrupt(timerNum int) interrupt.Interrupt {
+	var intr interrupt.Interrupt
+
+	switch timerNum {
+	case 1:
+		intr = interrupt.New(nrf.IRQ_TIMER1, func(intr interrupt.Interrupt) {
+			nrf.TIMER1.SetEVENTS_COMPARE(0, nrf.TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated) // Remove bit triggering the interrupt
+			interruptions <- InterruptionData{timerCallbackActions[1], -1}
+		})
+	case 2:
+		intr = interrupt.New(nrf.IRQ_TIMER2, func(intr interrupt.Interrupt) {
+			nrf.TIMER2.SetEVENTS_COMPARE(0, nrf.TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated) // Remove bit triggering the interrupt
+			interruptions <- InterruptionData{timerCallbackActions[2], -1}
+		})
+	case 3:
+		intr = interrupt.New(nrf.IRQ_TIMER3, func(intr interrupt.Interrupt) {
+			nrf.TIMER3.SetEVENTS_COMPARE(0, nrf.TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated) // Remove bit triggering the interrupt
+			interruptions <- InterruptionData{timerCallbackActions[3], -1}
+		})
+	case 4:
+		intr = interrupt.New(nrf.IRQ_TIMER4, func(intr interrupt.Interrupt) {
+			nrf.TIMER4.SetEVENTS_COMPARE(0, nrf.TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated) // Remove bit triggering the interrupt
+			interruptions <- InterruptionData{timerCallbackActions[4], -1}
+		})
+	default:
+		intr = interrupt.New(nrf.IRQ_TIMER0, func(intr interrupt.Interrupt) {
+			nrf.TIMER0.SetEVENTS_COMPARE(0, nrf.TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated) // Remove bit triggering the interrupt
+			interruptions <- InterruptionData{timerCallbackActions[0], -1}
+		})
+	}
+
+	return intr
+}
+
+func applyTinyStopTimer(m *GMachine) {
+	aTimerNum := m.stack.get()
+
+	if aTimerNum == nil {
+		errFatal("Empty stack while trying to apply tinyStopTimer")
+	}
+
+	timerNum, ok1 := m.heap.get(aTimerNum).(*NInt)
+
+	if !ok1 {
+		errFatal("tinyStopTimer arg address not pointing to a proper node type")
+	}
+
+	timer := getTimer(timerNum.n)
+
+	timer.SetTASKS_STOP(nrf.TIMER_TASKS_STOP_TASKS_STOP_Trigger)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func applyTinyStartTimer(m *GMachine) {
+	aTimerNum := m.stack.get()
+
+	if aTimerNum == nil {
+		errFatal("Empty stack while trying to apply tinyStartTimer")
+	}
+
+	timerNum, ok1 := m.heap.get(aTimerNum).(*NInt)
+
+	if !ok1 {
+		errFatal("tinyStartTimer arg address not pointing to a proper node type")
+	}
+
+	timer := getTimer(timerNum.n)
+
+	timer.SetTASKS_START(nrf.TIMER_TASKS_START_TASKS_START_Trigger)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func getTimer(timerNum int) *nrf.TIMER_Type {
+	var timer *nrf.TIMER_Type
+
+	switch timerNum {
+	case 1:
+		timer = nrf.TIMER1
+	case 2:
+		timer = nrf.TIMER2
+	case 3:
+		timer = nrf.TIMER3
+	case 4:
+		timer = nrf.TIMER4
+	default:
+		timer = nrf.TIMER0
+	}
+
+	return timer
 }

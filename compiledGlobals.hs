@@ -25,3 +25,7 @@ tinyGet :: Int -> IO Bool;
 tinyLow :: Int -> IO ();
 tinyHigh :: Int -> IO ();
 tinySetInterrupt :: Int -> Int -> (Int -> IO ()) -> IO ();
+
+tinySetTimer :: Int -> Int -> IO () -> IO ();
+tinyStopTimer :: Int -> IO ();
+tinyStartTimer :: Int -> IO ();

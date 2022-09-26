@@ -6,13 +6,14 @@ import (
 
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
+var interruptions = make(chan InterruptionData, 32) // We can't send references from callbacks (they are probably being destroyed)
+
 type GMachine struct {
 	instrQueue            *GInstrQueue
 	stack                 *GStack
 	dump                  *GDump
 	heap                  *GHeap
 	globalMap             *GGlobalMap
-	interruptions         chan InterruptionData // We can't send references from callbacks (they are probably being destroyed)
 	interruptionCallbacks []*GAddr
 	gcRound               int
 	gcNodeCount           int
@@ -26,7 +27,6 @@ func NewGMachine() *GMachine {
 	gMachine.dump = new(GDump)
 	gMachine.heap = newGHeap()
 	gMachine.globalMap = newGGlobalMap()
-	gMachine.interruptions = make(chan InterruptionData, 32)
 
 	gMachine.addCompiledGlobals()
 
@@ -37,17 +37,25 @@ func (m *GMachine) run() int {
 	for {
 		for m.instrQueue.size() > 0 {
 			select {
-			case interruptionData := <-m.interruptions:
-				_ = interruptionData
-				pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
-				m.stack.put(pinAddr)
-				m.stack.put(interruptionData.fun)
+			case interruptionData := <-interruptions:
+				if interruptionData.pin >= 0 {
+					pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
+					m.stack.put(pinAddr)
+					m.stack.put(interruptionData.fun)
 
-				m.instrQueue.putN([]GInstr{
-					&IMkApp{},
-					&IEval{},
-					&IPop{n: 1},
-				})
+					m.instrQueue.putN([]GInstr{
+						&IMkApp{},
+						&IEval{},
+						&IPop{n: 1},
+					})
+				} else { // No pin argument
+					m.stack.put(interruptionData.fun)
+
+					m.instrQueue.putN([]GInstr{
+						&IEval{},
+						&IPop{n: 1},
+					})
+				}
 			default:
 				instr := m.instrQueue.get()
 				instr.apply(m)
@@ -120,6 +128,10 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("tinyLow", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyLow}))
 	m.addGlobal("tinyHigh", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyHigh}))
 	m.addGlobal("tinySetInterrupt", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetInterrupt}, true, true, false))
+
+	m.addGlobal("tinySetTimer", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetTimer}, true, true, false))
+	m.addGlobal("tinyStopTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStopTimer}))
+	m.addGlobal("tinyStartTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStartTimer}))
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {

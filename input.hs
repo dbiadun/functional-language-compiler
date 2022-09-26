@@ -116,16 +116,20 @@ putIntLine n = do {
     putStr "\n";
 };
 
-blink :: Int -> Int -> IO ();
-blink led time = do {
+blinkLoop :: Int -> Int -> IO ();
+blinkLoop led time = do {
     halfTime <- return (time / 2);
-    singleSleep <- return (halfTime / 10);
+    tinySetTimer 0 halfTime (changeLed led);
+};
 
-    -- We use many short sleeps to enable good interruption handling
-    tinyHigh led;
-    for 0 singleSleep (takeInt (tinySleep 10));
-    tinyLow led;
-    for 0 singleSleep (takeInt (tinySleep 10));
+changeLed :: Int -> IO ();
+changeLed led = do {
+    ledState <- tinyGet led;
+
+    case ledState of {
+        True -> tinyLow led;
+        False -> tinyHigh led;
+    };
 };
 
 not :: Bool -> Bool;
@@ -137,7 +141,6 @@ not b = case b of {
 checkButton :: Int -> Int -> IO ();
 checkButton button led = do {
     -- We assume pullup button configuration
-    putStr "INTERRUPTION\n\r";
     buttonNotPressed <- tinyGet button;
     case not buttonNotPressed of {
         True -> tinyHigh led;
@@ -191,7 +194,7 @@ sampleBlinkingLed = do {
     led <- tinyLED;
     outputMode <- tinyPinOutput;
     tinyConfigure led outputMode;
-    loop (blink led 1000);
+    blinkLoop led 1000000;
 };
 
 sampleSimpleButton :: IO ();
@@ -225,11 +228,43 @@ sampleInterruptionButton = do {
 
     toggleChange <- tinyPinToggle;
 
-    tinySetInterrupt button toggleChange (checkButtonCallback button led);
+    tinySetTimer 0 500000 (changeLed led);
+    tinySetInterrupt button toggleChange (checkButtonCallback button led2);
 
-    --loop (putStr "");
-    loop (blink led2 500);
+    loop (putStr "");
+};
+
+timerStopStart :: Int -> IO ();
+timerStopStart timer = do {
+    tinyStopTimer timer;
+    tinySleep 3000;
+    tinyStartTimer timer;
+};
+
+sampleStopStartTimer :: IO ();
+sampleStopStartTimer = do {
+    led <- tinyLED;
+    led2 <- tinyLED2;
+    button <- tinyBUTTON;
+
+    outputMode <- tinyPinOutput;
+    inputMode <- tinyPinInputPullup;
+
+    tinyConfigure led outputMode;
+    tinyConfigure led2 outputMode;
+    tinyConfigure button inputMode;
+
+    buttonPressChange <- tinyPinFalling;
+
+    timerNum <- return 0;
+
+    tinySetTimer timerNum 500000 (changeLed led);
+    tinySetInterrupt button buttonPressChange (takeInt (timerStopStart timerNum));
+
+    tinyHigh led2;
+    loop (putStr "");
+
 };
 
 main :: IO ();
-main = sampleInterruptionButton;
+main = sampleStopStartTimer;
