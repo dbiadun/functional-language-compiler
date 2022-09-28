@@ -13,6 +13,7 @@ type GMachine struct {
 	stack                 *GStack
 	dump                  *GDump
 	heap                  *GHeap
+	state                 *GState
 	globalMap             *GGlobalMap
 	interruptionCallbacks []*GAddr
 	gcRound               int
@@ -26,6 +27,7 @@ func NewGMachine() *GMachine {
 	gMachine.stack = new(GStack)
 	gMachine.dump = new(GDump)
 	gMachine.heap = newGHeap()
+	gMachine.state = newGState()
 	gMachine.globalMap = newGGlobalMap()
 
 	gMachine.addCompiledGlobals()
@@ -107,6 +109,9 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutStr}))
 	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutInt}))
 	//m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyGetLine}))
+
+	m.addGlobal("stateSetInt", 2, m.createIOFunInstructions(2, &IIOFun{fun: applyStateSetInt}))
+	m.addGlobal("stateGetInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyStateGetInt}))
 
 	m.addGlobal("tinySleep", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinySleep}))
 
@@ -497,6 +502,27 @@ func (m *GGlobalMap) get(s string) *GAddr {
 
 func (m *GGlobalMap) put(s string, addr *GAddr) {
 	m.m[s] = addr
+}
+
+///////////////////////////////////////// STATE ////////////////////////////////////////////
+
+type GState struct {
+	intState map[string]int
+}
+
+func newGState() *GState {
+	s := new(GState)
+	s.intState = make(map[string]int)
+
+	return s
+}
+
+func (s *GState) setInt(id string, val int) {
+	s.intState[id] = val
+}
+
+func (s *GState) getInt(id string) int {
+	return s.intState[id]
 }
 
 //////////////////////////////////////// HELPERS ///////////////////////////////////////////

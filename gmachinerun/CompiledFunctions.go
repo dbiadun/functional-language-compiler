@@ -53,6 +53,42 @@ func applyPutInt(m *GMachine) {
 //	m.stack.put(addr)
 //}
 
+func applyStateSetInt(m *GMachine) {
+	aID := m.stack.get()
+	aVal := m.stack.get()
+	if aID == nil || aVal == nil {
+		errFatal("Empty stack while trying to apply stateSetInt")
+	}
+
+	id, ok := m.heap.get(aID).(*NString)
+	val, ok := m.heap.get(aVal).(*NInt)
+	if !ok {
+		errFatal("stateSetInt arg address not pointing to a proper node")
+	}
+
+	m.state.setInt(id.s, val.n)
+
+	addr := m.allocNewNode(&NUnit{})
+	m.stack.put(addr)
+}
+
+func applyStateGetInt(m *GMachine) {
+	aID := m.stack.get()
+	if aID == nil {
+		errFatal("Empty stack while trying to apply stateGetInt")
+	}
+
+	id, ok := m.heap.get(aID).(*NString)
+	if !ok {
+		errFatal("stateGetInt arg address not pointing to a proper node")
+	}
+
+	val := m.state.getInt(id.s)
+
+	addr := m.allocNewNode(&NInt{n: val})
+	m.stack.put(addr)
+}
+
 func applyTinySleep(m *GMachine) {
 	a := m.stack.get()
 
@@ -269,7 +305,7 @@ func applyTinySetTimer(m *GMachine) {
 	}
 
 	timerCallbackActions[timerNum.n] = aAction
-	m.interruptionCallbacks = append(m.interruptionCallbacks, aAction)
+	m.interruptionCallbacks = append(m.interruptionCallbacks, aAction) // To prevent garbage collector deleting the callback
 
 	timer := getTimer(timerNum.n)
 

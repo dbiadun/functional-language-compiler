@@ -266,5 +266,40 @@ sampleStopStartTimer = do {
 
 };
 
+runTimerCallbackUntil :: Int -> Int -> IO () -> IO ();
+runTimerCallbackUntil timer ticks action = do {
+    curTick <- stateGetInt "curTick";
+
+    case curTick < ticks of {
+        True -> do {
+            stateSetInt "curTick" (curTick + 1);
+            action;
+        };
+        False -> tinyStopTimer timer;
+    };
+};
+
+timerSetNTicks :: Int -> Int -> Int -> IO () -> IO ();
+timerSetNTicks timer duration ticks action = do {
+    stateSetInt "curTick" 0;
+    tinySetTimer timer duration (runTimerCallbackUntil timer ticks action);
+};
+
+sampleState :: IO ();
+sampleState = do {
+    led <- tinyLED;
+    led2 <- tinyLED2;
+
+    outputMode <- tinyPinOutput;
+
+    tinyConfigure led outputMode;
+    tinyConfigure led2 outputMode;
+
+    timerSetNTicks 0 500000 (2 * 5) (changeLed led);
+
+    tinyHigh led2;
+    loop (putStr "");
+};
+
 main :: IO ();
-main = sampleStopStartTimer;
+main = sampleState;

@@ -3,6 +3,9 @@ putStr :: String -> IO ();
 putInt :: Int -> IO ();
 getLine :: IO String;
 
+stateSetInt :: String -> Int -> IO ();
+stateGetInt :: String -> IO Int;
+
 -- Go functions
 tinySleep :: Int -> IO ();
 
