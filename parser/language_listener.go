@@ -155,6 +155,12 @@ type LanguageListener interface {
 	// EnterString is called when entering the String production.
 	EnterString(c *StringContext)
 
+	// EnterDec is called when entering the Dec production.
+	EnterDec(c *DecContext)
+
+	// EnterHex is called when entering the Hex production.
+	EnterHex(c *HexContext)
+
 	// ExitStart is called when exiting the start production.
 	ExitStart(c *StartContext)
 
@@ -301,4 +307,10 @@ type LanguageListener interface {
 
 	// ExitString is called when exiting the String production.
 	ExitString(c *StringContext)
+
+	// ExitDec is called when exiting the Dec production.
+	ExitDec(c *DecContext)
+
+	// ExitHex is called when exiting the Hex production.
+	ExitHex(c *HexContext)
 }

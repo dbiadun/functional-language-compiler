@@ -30,7 +30,8 @@ CASE: 'case';
 OF: 'of';
 ARROW_RIGHT: '->';
 ARROW_LEFT: '<-';
-INT: [0-9]+;
+DEC: [0-9]+;
+HEX: '0x' [0-9a-fA-F]+;
 CHAR: '\''.'\'';
 STRING: '"'.*?'"';
 VARID: [a-z][a-zA-Z0-9_]*;
@@ -154,7 +155,12 @@ apat
     ;
 
 literal
-    : INT # Int
+    : integer # Int
     | CHAR # Char
     | STRING # String
+    ;
+
+integer
+    : DEC # Dec
+    | HEX # Hex
     ;

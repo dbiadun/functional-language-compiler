@@ -595,18 +595,7 @@ func (v *BuildASTVisitor) VisitApatLit(ctx *parser.ApatLitContext) interface{} {
 // literal
 
 func (v *BuildASTVisitor) VisitInt(ctx *parser.IntContext) interface{} {
-	e := new(Int)
-	e.setPosFromCtx(ctx)
-
-	n, err := strconv.Atoi(ctx.GetText())
-
-	if err == nil {
-		e.n = n
-	} else {
-		log.Fatalln(fmt.Sprintf("Error: '%s' is not a permitted integer", ctx.GetText()))
-	}
-
-	return e
+	return ctx.Integer().Accept(v).(*Int)
 }
 
 func (v *BuildASTVisitor) VisitChar(ctx *parser.CharContext) interface{} {
@@ -629,4 +618,36 @@ func (v *BuildASTVisitor) VisitString(ctx *parser.StringContext) interface{} {
 	r.s = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
 
 	return r
+}
+
+// integer
+
+func (v *BuildASTVisitor) VisitDec(ctx *parser.DecContext) interface{} {
+	e := new(Int)
+	e.setPosFromCtx(ctx)
+
+	n, err := strconv.Atoi(ctx.GetText())
+
+	if err == nil {
+		e.n = n
+	} else {
+		log.Fatalln(fmt.Sprintf("Error: '%s' is not a permitted integer", ctx.GetText()))
+	}
+
+	return e
+}
+
+func (v *BuildASTVisitor) VisitHex(ctx *parser.HexContext) interface{} {
+	e := new(Int)
+	e.setPosFromCtx(ctx)
+
+	n, err := strconv.ParseInt(ctx.GetText()[2:], 16, 64)
+
+	if err == nil {
+		e.n = int(n)
+	} else {
+		log.Fatalln(fmt.Sprintf("Error: '%s' is not a permitted integer", ctx.GetText()))
+	}
+
+	return e
 }

@@ -203,3 +203,11 @@ func (v *BaseLanguageVisitor) VisitChar(ctx *CharContext) interface{} {
 func (v *BaseLanguageVisitor) VisitString(ctx *StringContext) interface{} {
 	return v.VisitChildren(ctx)
 }
+
+func (v *BaseLanguageVisitor) VisitDec(ctx *DecContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseLanguageVisitor) VisitHex(ctx *HexContext) interface{} {
+	return v.VisitChildren(ctx)
+}

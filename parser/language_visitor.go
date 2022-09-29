@@ -154,4 +154,10 @@ type LanguageVisitor interface {
 
 	// Visit a parse tree produced by LanguageParser#String.
 	VisitString(ctx *StringContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#Dec.
+	VisitDec(ctx *DecContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#Hex.
+	VisitHex(ctx *HexContext) interface{}
 }
