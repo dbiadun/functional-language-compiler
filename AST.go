@@ -383,6 +383,13 @@ type ESub struct {
 	BaseEBinary
 }
 
+type EBit struct {
+	BaseExp
+	e1 Exp
+	e2 Exp
+	op string
+}
+
 type EComp struct {
 	BaseExp
 	e1 Exp

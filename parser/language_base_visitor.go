@@ -120,6 +120,10 @@ func (v *BaseLanguageVisitor) VisitEFun(ctx *EFunContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseLanguageVisitor) VisitEBitOr(ctx *EBitOrContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseLanguageVisitor) VisitEAddSub(ctx *EAddSubContext) interface{} {
 	return v.VisitChildren(ctx)
 }

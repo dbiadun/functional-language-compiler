@@ -189,6 +189,12 @@ func (s *BaseLanguageListener) EnterEFun(ctx *EFunContext) {}
 // ExitEFun is called when production EFun is exited.
 func (s *BaseLanguageListener) ExitEFun(ctx *EFunContext) {}
 
+// EnterEBitOr is called when production EBitOr is entered.
+func (s *BaseLanguageListener) EnterEBitOr(ctx *EBitOrContext) {}
+
+// ExitEBitOr is called when production EBitOr is exited.
+func (s *BaseLanguageListener) ExitEBitOr(ctx *EBitOrContext) {}
+
 // EnterEAddSub is called when production EAddSub is entered.
 func (s *BaseLanguageListener) EnterEAddSub(ctx *EAddSubContext) {}
 

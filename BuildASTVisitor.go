@@ -332,6 +332,18 @@ func (v *BuildASTVisitor) VisitEMulDiv(ctx *parser.EMulDivContext) interface{} {
 	line := ctx.GetOp().GetLine()
 	col := ctx.GetOp().GetColumn()
 
+	if op == parser.LanguageLexerBIT_AND {
+		e := new(EBit)
+
+		e.setPos(line, col)
+
+		e.e1 = subtree1.Accept(v).(Exp)
+		e.e2 = subtree2.Accept(v).(Exp)
+		e.op = ctx.GetOp().GetText()
+
+		return e
+	}
+
 	return v.VisitEBinary(subtree1, subtree2, op, line, col)
 }
 func (v *BuildASTVisitor) VisitEAddSub(ctx *parser.EAddSubContext) interface{} {
@@ -366,6 +378,23 @@ func (v *BuildASTVisitor) VisitEBinary(subtree1 parser.IExpContext, subtree2 par
 	e2 := subtree2.Accept(v).(Exp)
 
 	e.setExps(e1, e2)
+
+	return e
+}
+
+func (v *BuildASTVisitor) VisitEBitOr(ctx *parser.EBitOrContext) interface{} {
+	e := new(EBit)
+
+	subtree1 := ctx.GetE1()
+	subtree2 := ctx.GetE2()
+	line := ctx.GetOp().GetLine()
+	col := ctx.GetOp().GetColumn()
+
+	e.setPos(line, col)
+
+	e.e1 = subtree1.Accept(v).(Exp)
+	e.e2 = subtree2.Accept(v).(Exp)
+	e.op = ctx.GetOp().GetText()
 
 	return e
 }
@@ -613,8 +642,8 @@ func (v *BuildASTVisitor) VisitString(ctx *parser.StringContext) interface{} {
 	r.setPosFromCtx(ctx)
 
 	s := ctx.GetText()
-	s = strings.ReplaceAll(s, "\\n", "\n")
 	s = strings.ReplaceAll(s, "\\r", "\r")
+	s = strings.ReplaceAll(s, "\\n", "\n\r")
 	r.s = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
 
 	return r

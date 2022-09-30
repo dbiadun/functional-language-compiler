@@ -92,6 +92,9 @@ type LanguageListener interface {
 	// EnterEFun is called when entering the EFun production.
 	EnterEFun(c *EFunContext)
 
+	// EnterEBitOr is called when entering the EBitOr production.
+	EnterEBitOr(c *EBitOrContext)
+
 	// EnterEAddSub is called when entering the EAddSub production.
 	EnterEAddSub(c *EAddSubContext)
 
@@ -244,6 +247,9 @@ type LanguageListener interface {
 
 	// ExitEFun is called when exiting the EFun production.
 	ExitEFun(c *EFunContext)
+
+	// ExitEBitOr is called when exiting the EBitOr production.
+	ExitEBitOr(c *EBitOrContext)
 
 	// ExitEAddSub is called when exiting the EAddSub production.
 	ExitEAddSub(c *EAddSubContext)

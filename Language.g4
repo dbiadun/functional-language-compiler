@@ -5,6 +5,7 @@ MUL: '*';
 DIV: '/';
 ADD: '+';
 SUB: '-';
+BIT_AND: '&';
 ASSIGN: '=';
 LT: '<';
 GT: '>';
@@ -107,8 +108,9 @@ exp
     : fexp # EFun
     | DO BRACE_LEFT stmts BRACE_RIGHT # EDo
     | CASE exp OF BRACE_LEFT alts BRACE_RIGHT # ECase
-    | e1=exp op=(MUL|DIV) e2=exp # EMulDiv
+    | e1=exp op=(MUL|DIV|BIT_AND) e2=exp # EMulDiv
     | e1=exp op=(ADD|SUB) e2=exp # EAddSub
+    | e1=exp op=VERTICAL_BAR e2=exp # EBitOr
     | e1=exp op=(LT|GT|LTE|GTE|EQ|NEQ) e2=exp # EComp
     | e1=exp op=(AND|OR) e2=exp # ELogical
     ;

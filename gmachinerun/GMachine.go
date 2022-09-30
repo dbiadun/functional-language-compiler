@@ -1,9 +1,5 @@
 package main
 
-import (
-	"machine"
-)
-
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
 var interruptions = make(chan InterruptionData, 32) // We can't send references from callbacks (they are probably being destroyed)
@@ -92,10 +88,15 @@ func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
 }
 
 func (m *GMachine) addCompiledGlobals() {
+	m.addGlobal("shiftL", 2, m.createFunInstructions(2, &IBitOp{op: "<<"}))
+	m.addGlobal("shiftR", 2, m.createFunInstructions(2, &IBitOp{op: ">>"}))
+
 	m.addGlobal("+", 2, m.createFunInstructions(2, &IBinOp{op: "+"}))
 	m.addGlobal("-", 2, m.createFunInstructions(2, &IBinOp{op: "-"}))
 	m.addGlobal("*", 2, m.createFunInstructions(2, &IBinOp{op: "*"}))
 	m.addGlobal("/", 2, m.createFunInstructions(2, &IBinOp{op: "/"}))
+	m.addGlobal("&", 2, m.createFunInstructions(2, &IBitOp{op: "&"}))
+	m.addGlobal("|", 2, m.createFunInstructions(2, &IBitOp{op: "|"}))
 	m.addGlobal("<", 2, m.createFunInstructions(2, &ICompOp{op: "<"}))
 	m.addGlobal(">", 2, m.createFunInstructions(2, &ICompOp{op: ">"}))
 	m.addGlobal("<=", 2, m.createFunInstructions(2, &ICompOp{op: "<="}))
@@ -137,6 +138,12 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("tinySetTimer", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetTimer}, true, true, false))
 	m.addGlobal("tinyStopTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStopTimer}))
 	m.addGlobal("tinyStartTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStartTimer}))
+
+	m.addGlobal("tinyI2CConfigure", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CConfigure}))
+	m.addGlobal("tinyI2CConfigureDefault", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyI2CConfigureDefault}))
+	m.addGlobal("tinyI2CReadRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CReadRegister}))
+	m.addGlobal("tinyI2CWriteRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CWriteRegister}))
+	m.addGlobal("tinyI2CTx", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CTx}))
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
@@ -205,10 +212,6 @@ func (m *GMachine) allocNewNode(node GNode) *GAddr {
 
 func errFatal(s string) {
 	panic("Runtime error: " + s)
-}
-
-func debug(s string) {
-	machine.UART0.Write([]byte(s))
 }
 
 /////////////////////////////////// INTERRUPTION DATA //////////////////////////////////////
@@ -952,6 +955,44 @@ func (i *IBinOp) apply(m *GMachine) {
 		res = n0 * n1
 	case "/":
 		res = n0 / n1
+	}
+
+	resNode := &NInt{n: res}
+	addr := m.allocNewNode(resNode)
+	m.stack.put(addr)
+}
+
+type IBitOp struct {
+	BaseGInstr
+	op string
+}
+
+func (i *IBitOp) apply(m *GMachine) {
+	a0 := m.stack.get()
+	a1 := m.stack.get()
+	if a0 == nil || a1 == nil {
+		errFatal("Empty stack while trying to apply BitOp")
+	}
+
+	node0, ok0 := m.heap.get(a0).(*NInt)
+	node1, ok1 := m.heap.get(a1).(*NInt)
+	if !ok0 || !ok1 {
+		errFatal("BitOp arg address not pointing to an NInt")
+	}
+
+	n0 := node0.n
+	n1 := node1.n
+
+	var res int
+	switch i.op {
+	case "&":
+		res = n0 & n1
+	case "|":
+		res = n0 | n1
+	case "<<":
+		res = n0 << n1
+	case ">>":
+		res = n0 >> n1
 	}
 
 	resNode := &NInt{n: res}
