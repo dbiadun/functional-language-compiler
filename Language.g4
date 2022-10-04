@@ -5,6 +5,7 @@ MUL: '*';
 DIV: '/';
 ADD: '+';
 SUB: '-';
+BIT_AND: '&';
 ASSIGN: '=';
 LT: '<';
 GT: '>';
@@ -30,7 +31,8 @@ CASE: 'case';
 OF: 'of';
 ARROW_RIGHT: '->';
 ARROW_LEFT: '<-';
-INT: [0-9]+;
+DEC: [0-9]+;
+HEX: '0x' [0-9a-fA-F]+;
 CHAR: '\''.'\'';
 STRING: '"'.*?'"';
 VARID: [a-z][a-zA-Z0-9_]*;
@@ -106,8 +108,9 @@ exp
     : fexp # EFun
     | DO BRACE_LEFT stmts BRACE_RIGHT # EDo
     | CASE exp OF BRACE_LEFT alts BRACE_RIGHT # ECase
-    | e1=exp op=(MUL|DIV) e2=exp # EMulDiv
+    | e1=exp op=(MUL|DIV|BIT_AND) e2=exp # EMulDiv
     | e1=exp op=(ADD|SUB) e2=exp # EAddSub
+    | e1=exp op=VERTICAL_BAR e2=exp # EBitOr
     | e1=exp op=(LT|GT|LTE|GTE|EQ|NEQ) e2=exp # EComp
     | e1=exp op=(AND|OR) e2=exp # ELogical
     ;
@@ -154,7 +157,12 @@ apat
     ;
 
 literal
-    : INT # Int
+    : integer # Int
     | CHAR # Char
     | STRING # String
+    ;
+
+integer
+    : DEC # Dec
+    | HEX # Hex
     ;

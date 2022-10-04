@@ -1,7 +1,6 @@
 data Maybe a = Just a | Nothing;
 
-just :: Maybe Int -> Int;
-just x = case x of {
-    Just n -> n;
-    Nothing -> 0;
+fromJust :: Maybe a -> a;
+fromJust x = case x of {
+    Just val -> val;
 };

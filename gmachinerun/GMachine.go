@@ -1,21 +1,20 @@
 package main
 
-import (
-	"fmt"
-	"strconv"
-)
-
 /////////////////////////////////////// G MACHINE //////////////////////////////////////////
 
+var interruptions = make(chan InterruptionData, 32) // We can't send references from callbacks (they are probably being destroyed)
+
 type GMachine struct {
-	instrQueue  *GInstrQueue
-	stack       *GStack
-	dump        *GDump
-	heap        *GHeap
-	globalMap   *GGlobalMap
-	gcRound     int
-	gcNodeCount int
-	gcThreshold int
+	instrQueue            *GInstrQueue
+	stack                 *GStack
+	dump                  *GDump
+	heap                  *GHeap
+	state                 *GState
+	globalMap             *GGlobalMap
+	interruptionCallbacks []*GAddr
+	gcRound               int
+	gcNodeCount           int
+	gcThreshold           int
 }
 
 func NewGMachine() *GMachine {
@@ -24,6 +23,7 @@ func NewGMachine() *GMachine {
 	gMachine.stack = new(GStack)
 	gMachine.dump = new(GDump)
 	gMachine.heap = newGHeap()
+	gMachine.state = newGState()
 	gMachine.globalMap = newGGlobalMap()
 
 	gMachine.addCompiledGlobals()
@@ -34,8 +34,30 @@ func NewGMachine() *GMachine {
 func (m *GMachine) run() int {
 	for {
 		for m.instrQueue.size() > 0 {
-			instr := m.instrQueue.get()
-			instr.apply(m)
+			select {
+			case interruptionData := <-interruptions:
+				if interruptionData.pin >= 0 {
+					pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
+					m.stack.put(pinAddr)
+					m.stack.put(interruptionData.fun)
+
+					m.instrQueue.putN([]GInstr{
+						&IMkApp{},
+						&IEval{},
+						&IPop{n: 1},
+					})
+				} else { // No pin argument
+					m.stack.put(interruptionData.fun)
+
+					m.instrQueue.putN([]GInstr{
+						&IEval{},
+						&IPop{n: 1},
+					})
+				}
+			default:
+				instr := m.instrQueue.get()
+				instr.apply(m)
+			}
 		}
 
 		addr := m.stack.get()
@@ -66,10 +88,15 @@ func (m *GMachine) addGlobal(name string, arity int, instrs []GInstr) {
 }
 
 func (m *GMachine) addCompiledGlobals() {
+	m.addGlobal("shiftL", 2, m.createFunInstructions(2, &IBitOp{op: "<<"}))
+	m.addGlobal("shiftR", 2, m.createFunInstructions(2, &IBitOp{op: ">>"}))
+
 	m.addGlobal("+", 2, m.createFunInstructions(2, &IBinOp{op: "+"}))
 	m.addGlobal("-", 2, m.createFunInstructions(2, &IBinOp{op: "-"}))
 	m.addGlobal("*", 2, m.createFunInstructions(2, &IBinOp{op: "*"}))
 	m.addGlobal("/", 2, m.createFunInstructions(2, &IBinOp{op: "/"}))
+	m.addGlobal("&", 2, m.createFunInstructions(2, &IBitOp{op: "&"}))
+	m.addGlobal("|", 2, m.createFunInstructions(2, &IBitOp{op: "|"}))
 	m.addGlobal("<", 2, m.createFunInstructions(2, &ICompOp{op: "<"}))
 	m.addGlobal(">", 2, m.createFunInstructions(2, &ICompOp{op: ">"}))
 	m.addGlobal("<=", 2, m.createFunInstructions(2, &ICompOp{op: "<="}))
@@ -79,10 +106,44 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("&&", 2, m.createFunInstructions(2, &ILogOp{op: "&&"}))
 	m.addGlobal("||", 2, m.createFunInstructions(2, &ILogOp{op: "||"}))
 
-	m.addGlobal("return", 1, m.createIOFunInstructions(1, &IIOFun{fun: "return"}))
-	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putStr"}))
-	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: "putInt"}))
-	m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: "getLine"}))
+	m.addGlobal("return", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyReturn}))
+	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutStr}))
+	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutInt}))
+	//m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyGetLine}))
+
+	m.addGlobal("stateSetInt", 2, m.createIOFunInstructions(2, &IIOFun{fun: applyStateSetInt}))
+	m.addGlobal("stateGetInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyStateGetInt}))
+
+	m.addGlobal("tinySleep", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinySleep}))
+
+	m.addGlobal("tinyLED", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyLED}))
+	m.addGlobal("tinyLED2", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyLED2}))
+	m.addGlobal("tinyBUTTON", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyBUTTON}))
+
+	m.addGlobal("tinyConfigure", 2, m.createIOFunInstructions(2, &IIOFun{fun: applyTinyConfigure}))
+	m.addGlobal("tinyPinInput", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInput}))
+	m.addGlobal("tinyPinInputPullup", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInputPullup}))
+	m.addGlobal("tinyPinInputPulldown", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInputPulldown}))
+	m.addGlobal("tinyPinOutput", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinOutput}))
+
+	m.addGlobal("tinyPinRising", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinRising}))
+	m.addGlobal("tinyPinFalling", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinFalling}))
+	m.addGlobal("tinyPinToggle", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinToggle}))
+
+	m.addGlobal("tinyGet", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyGet}))
+	m.addGlobal("tinyLow", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyLow}))
+	m.addGlobal("tinyHigh", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyHigh}))
+	m.addGlobal("tinySetInterrupt", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetInterrupt}, true, true, false))
+
+	m.addGlobal("tinySetTimer", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetTimer}, true, true, false))
+	m.addGlobal("tinyStopTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStopTimer}))
+	m.addGlobal("tinyStartTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStartTimer}))
+
+	m.addGlobal("tinyI2CConfigure", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CConfigure}))
+	m.addGlobal("tinyI2CConfigureDefault", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyI2CConfigureDefault}))
+	m.addGlobal("tinyI2CReadRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CReadRegister}))
+	m.addGlobal("tinyI2CWriteRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CWriteRegister}))
+	m.addGlobal("tinyI2CTx", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CTx}))
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
@@ -99,11 +160,18 @@ func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
 	return instrs
 }
 
-func (m *GMachine) createIOFunInstructions(arity int, funInstr GInstr) []GInstr {
+func (m *GMachine) createIOFunInstructions(arity int, funInstr GInstr, shouldEval ...bool) []GInstr {
 	var instrs []GInstr
 	for i := 0; i < arity; i++ {
 		instrs = append(instrs, &IPush{n: arity - 1})
-		instrs = append(instrs, &IEval{})
+
+		// We need to revert the order of arguments here
+		argNum := arity - 1 - i
+		if argNum < len(shouldEval) && !shouldEval[argNum] {
+			continue
+		} else {
+			instrs = append(instrs, &IEval{})
+		}
 	}
 	instrs = append(instrs, funInstr)
 
@@ -146,6 +214,13 @@ func errFatal(s string) {
 	panic("Runtime error: " + s)
 }
 
+/////////////////////////////////// INTERRUPTION DATA //////////////////////////////////////
+
+type InterruptionData struct {
+	fun *GAddr
+	pin int
+}
+
 /////////////////////////////////// GARBAGE COLLECTION /////////////////////////////////////
 
 func (m *GMachine) gcRunIfNeeded(newNodeToVisit *GAddr) {
@@ -167,6 +242,9 @@ func (m *GMachine) gcMark(newNodeToVisit *GAddr) {
 		m.gcVisitStack(dumpEntry.s)
 	}
 	for _, addr := range m.globalMap.m {
+		m.gcVisitNode(addr)
+	}
+	for _, addr := range m.interruptionCallbacks {
 		m.gcVisitNode(addr)
 	}
 	m.gcVisitNode(newNodeToVisit)
@@ -429,6 +507,27 @@ func (m *GGlobalMap) put(s string, addr *GAddr) {
 	m.m[s] = addr
 }
 
+///////////////////////////////////////// STATE ////////////////////////////////////////////
+
+type GState struct {
+	intState map[string]int
+}
+
+func newGState() *GState {
+	s := new(GState)
+	s.intState = make(map[string]int)
+
+	return s
+}
+
+func (s *GState) setInt(id string, val int) {
+	s.intState[id] = val
+}
+
+func (s *GState) getInt(id string) int {
+	return s.intState[id]
+}
+
 //////////////////////////////////////// HELPERS ///////////////////////////////////////////
 
 type GAddr struct {
@@ -504,33 +603,41 @@ const (
 	boolTrueTag  = 1
 )
 
-func (n *NInt) String() string {
-	return "NInt " + strconv.Itoa(n.n)
+func boolToNData(b bool) *NData {
+	if b {
+		return &NData{tag: boolTrueTag}
+	} else {
+		return &NData{tag: boolFalseTag}
+	}
 }
 
-func (n *NString) String() string {
-	return "NString " + n.s
-}
-
-func (n *NUnit) String() string {
-	return "NUnit"
-}
-
-func (n *NApp) String() string {
-	return "NApp"
-}
-
-func (n *NGlobal) String() string {
-	return "NGlobal " + strconv.Itoa(n.argsNum)
-}
-
-func (n *NInd) String() string {
-	return "NInd"
-}
-
-func (n *NData) String() string {
-	return "NData " + strconv.Itoa(n.tag)
-}
+//func (n *NInt) String() string {
+//	return "NInt " + strconv.Itoa(n.n)
+//}
+//
+//func (n *NString) String() string {
+//	return "NString " + n.s
+//}
+//
+//func (n *NUnit) String() string {
+//	return "NUnit"
+//}
+//
+//func (n *NApp) String() string {
+//	return "NApp"
+//}
+//
+//func (n *NGlobal) String() string {
+//	return "NGlobal " + strconv.Itoa(n.argsNum)
+//}
+//
+//func (n *NInd) String() string {
+//	return "NInd"
+//}
+//
+//func (n *NData) String() string {
+//	return "NData " + strconv.Itoa(n.tag)
+//}
 
 ////////////////////////////////////// INSTRUCTIONS ////////////////////////////////////////
 
@@ -855,6 +962,44 @@ func (i *IBinOp) apply(m *GMachine) {
 	m.stack.put(addr)
 }
 
+type IBitOp struct {
+	BaseGInstr
+	op string
+}
+
+func (i *IBitOp) apply(m *GMachine) {
+	a0 := m.stack.get()
+	a1 := m.stack.get()
+	if a0 == nil || a1 == nil {
+		errFatal("Empty stack while trying to apply BitOp")
+	}
+
+	node0, ok0 := m.heap.get(a0).(*NInt)
+	node1, ok1 := m.heap.get(a1).(*NInt)
+	if !ok0 || !ok1 {
+		errFatal("BitOp arg address not pointing to an NInt")
+	}
+
+	n0 := node0.n
+	n1 := node1.n
+
+	var res int
+	switch i.op {
+	case "&":
+		res = n0 & n1
+	case "|":
+		res = n0 | n1
+	case "<<":
+		res = n0 << n1
+	case ">>":
+		res = n0 >> n1
+	}
+
+	resNode := &NInt{n: res}
+	addr := m.allocNewNode(resNode)
+	m.stack.put(addr)
+}
+
 type ICompOp struct {
 	BaseGInstr
 	op string
@@ -990,66 +1135,9 @@ func (i *IPop) apply(m *GMachine) {
 
 type IIOFun struct {
 	BaseGInstr
-	fun string
+	fun func(*GMachine)
 }
 
 func (i *IIOFun) apply(m *GMachine) {
-	switch i.fun {
-	case "return":
-		applyReturn()
-	case "putStr":
-		applyPutStr(m)
-	case "putInt":
-		applyPutInt(m)
-	case "getLine":
-		applyGetLine(m)
-	}
-}
-
-//////////////////////////////////// COMPILED FUNCTIONS ////////////////////////////////////
-
-func applyReturn() {
-	return
-}
-
-func applyPutStr(m *GMachine) {
-	a := m.stack.get()
-	if a == nil {
-		errFatal("Empty stack while trying to apply putStr")
-	}
-
-	node, ok := m.heap.get(a).(*NString)
-	if !ok {
-		errFatal("putStr arg address not pointing to an NString")
-	}
-
-	print(node.s)
-
-	addr := m.allocNewNode(&NUnit{})
-	m.stack.put(addr)
-}
-
-func applyPutInt(m *GMachine) {
-	a := m.stack.get()
-	if a == nil {
-		errFatal("Empty stack while trying to apply putInt")
-	}
-
-	node, ok := m.heap.get(a).(*NInt)
-	if !ok {
-		errFatal("putStr arg address not pointing to an NInt")
-	}
-
-	print(node.n)
-
-	addr := m.allocNewNode(&NUnit{})
-	m.stack.put(addr)
-}
-
-func applyGetLine(m *GMachine) {
-	var line string
-	fmt.Scanln(&line)
-
-	addr := m.allocNewNode(&NString{s: line})
-	m.stack.put(addr)
+	i.fun(m)
 }

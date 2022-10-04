@@ -92,6 +92,9 @@ type LanguageVisitor interface {
 	// Visit a parse tree produced by LanguageParser#EFun.
 	VisitEFun(ctx *EFunContext) interface{}
 
+	// Visit a parse tree produced by LanguageParser#EBitOr.
+	VisitEBitOr(ctx *EBitOrContext) interface{}
+
 	// Visit a parse tree produced by LanguageParser#EAddSub.
 	VisitEAddSub(ctx *EAddSubContext) interface{}
 
@@ -154,4 +157,10 @@ type LanguageVisitor interface {
 
 	// Visit a parse tree produced by LanguageParser#String.
 	VisitString(ctx *StringContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#Dec.
+	VisitDec(ctx *DecContext) interface{}
+
+	// Visit a parse tree produced by LanguageParser#Hex.
+	VisitHex(ctx *HexContext) interface{}
 }

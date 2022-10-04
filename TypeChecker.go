@@ -1252,6 +1252,8 @@ func (c *TypeChecker) checkExp(v Exp) *TypeCheckResult {
 		return c.checkEAdd(v)
 	case *ESub:
 		return c.checkESub(v)
+	case *EBit:
+		return c.checkEBit(v)
 	case *EComp:
 		return c.checkEComp(v)
 	case *ELogical:
@@ -1311,6 +1313,17 @@ func (c *TypeChecker) checkBinOp(v ASTNode, e1 Exp, e2 Exp) *TypeCheckResult {
 
 	t1 := c.checkExp(e1)
 	t2 := c.checkExp(e2)
+
+	c.checkMatch(v, intType, t1.t, false)
+	c.checkMatch(v, intType, t2.t, false)
+	return &TypeCheckResult{intType}
+}
+
+func (c *TypeChecker) checkEBit(v *EBit) *TypeCheckResult {
+	intType := getIntType()
+
+	t1 := c.checkExp(v.e1)
+	t2 := c.checkExp(v.e2)
 
 	c.checkMatch(v, intType, t1.t, false)
 	c.checkMatch(v, intType, t2.t, false)

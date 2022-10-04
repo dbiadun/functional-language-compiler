@@ -37,6 +37,7 @@ func (c *Compiler) init() {
 func (c *Compiler) compile(filename string) {
 	gCodeDirectory := "./gmachinerun/"
 	gCodeFile := gCodeDirectory + "main.go"
+	c.addCompiledGlobalsTypes("./compilerInternals.hs")
 	c.addCompiledGlobalsTypes("./compiledGlobals.hs")
 	c.compileAllToGCode(filename)
 	c.emitGCode(gCodeFile)
@@ -44,8 +45,7 @@ func (c *Compiler) compile(filename string) {
 }
 
 func (c *Compiler) addCompiledGlobalsTypes(filename string) {
-	ast := c.parseFile(filename)
-	c.typeChecker.checkCodePart(ast)
+	c.compileSubtreeToGCode(filename)
 }
 
 func (c *Compiler) compileAllToGCode(filename string) {
@@ -81,8 +81,8 @@ func (c *Compiler) emitGCode(outputFile string) {
 }
 
 func (c *Compiler) compileGCode(inputDirectory string) {
-	cmd := exec.Command("tinygo", "build", "-size", "full", "-o", "./gmachinerun/output", inputDirectory)
-	stdout, err := cmd.Output()
+	cmd := exec.Command("tinygo", "build", "-size", "full", "-target=feather-nrf52840-sense", "-o", "./gmachinerun/output", inputDirectory)
+	stdout, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(err)
 	}

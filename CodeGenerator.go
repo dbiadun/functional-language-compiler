@@ -447,6 +447,8 @@ func (g *CodeGenerator) genExp(v Exp) {
 		g.genEBinary(v, "+")
 	case *ESub:
 		g.genEBinary(v, "-")
+	case *EBit:
+		g.genEBit(v)
 	case *EComp:
 		g.genEComp(v)
 	case *ELogical:
@@ -484,6 +486,17 @@ func (g *CodeGenerator) genEBinary(v EBinary, op string) {
 
 	// We need to print the operator in quotes
 	g.pushInstr(cPushGlobal, fmt.Sprintf("%q", op))
+	g.pushInstr(cMkApp)
+	g.pushInstr(cMkApp)
+	g.env.changeStackSize(-1) // Two args are replaced by one result
+}
+
+func (g *CodeGenerator) genEBit(v *EBit) {
+	g.genExp(v.e2)
+	g.genExp(v.e1)
+
+	// We need to print the operator in quotes
+	g.pushInstr(cPushGlobal, fmt.Sprintf("%q", v.op))
 	g.pushInstr(cMkApp)
 	g.pushInstr(cMkApp)
 	g.env.changeStackSize(-1) // Two args are replaced by one result

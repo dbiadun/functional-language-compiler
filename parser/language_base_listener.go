@@ -189,6 +189,12 @@ func (s *BaseLanguageListener) EnterEFun(ctx *EFunContext) {}
 // ExitEFun is called when production EFun is exited.
 func (s *BaseLanguageListener) ExitEFun(ctx *EFunContext) {}
 
+// EnterEBitOr is called when production EBitOr is entered.
+func (s *BaseLanguageListener) EnterEBitOr(ctx *EBitOrContext) {}
+
+// ExitEBitOr is called when production EBitOr is exited.
+func (s *BaseLanguageListener) ExitEBitOr(ctx *EBitOrContext) {}
+
 // EnterEAddSub is called when production EAddSub is entered.
 func (s *BaseLanguageListener) EnterEAddSub(ctx *EAddSubContext) {}
 
@@ -314,3 +320,15 @@ func (s *BaseLanguageListener) EnterString(ctx *StringContext) {}
 
 // ExitString is called when production String is exited.
 func (s *BaseLanguageListener) ExitString(ctx *StringContext) {}
+
+// EnterDec is called when production Dec is entered.
+func (s *BaseLanguageListener) EnterDec(ctx *DecContext) {}
+
+// ExitDec is called when production Dec is exited.
+func (s *BaseLanguageListener) ExitDec(ctx *DecContext) {}
+
+// EnterHex is called when production Hex is entered.
+func (s *BaseLanguageListener) EnterHex(ctx *HexContext) {}
+
+// ExitHex is called when production Hex is exited.
+func (s *BaseLanguageListener) ExitHex(ctx *HexContext) {}
