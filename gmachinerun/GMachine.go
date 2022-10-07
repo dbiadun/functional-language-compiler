@@ -109,41 +109,13 @@ func (m *GMachine) addCompiledGlobals() {
 	m.addGlobal("return", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyReturn}))
 	m.addGlobal("putStr", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutStr}))
 	m.addGlobal("putInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyPutInt}))
-	//m.addGlobal("getLine", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyGetLine}))
 
 	m.addGlobal("stateSetInt", 2, m.createIOFunInstructions(2, &IIOFun{fun: applyStateSetInt}))
 	m.addGlobal("stateGetInt", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyStateGetInt}))
 
 	m.addGlobal("tinySleep", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinySleep}))
 
-	m.addGlobal("tinyLED", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyLED}))
-	m.addGlobal("tinyLED2", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyLED2}))
-	m.addGlobal("tinyBUTTON", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyBUTTON}))
-
-	m.addGlobal("tinyConfigure", 2, m.createIOFunInstructions(2, &IIOFun{fun: applyTinyConfigure}))
-	m.addGlobal("tinyPinInput", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInput}))
-	m.addGlobal("tinyPinInputPullup", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInputPullup}))
-	m.addGlobal("tinyPinInputPulldown", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinInputPulldown}))
-	m.addGlobal("tinyPinOutput", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinOutput}))
-
-	m.addGlobal("tinyPinRising", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinRising}))
-	m.addGlobal("tinyPinFalling", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinFalling}))
-	m.addGlobal("tinyPinToggle", 0, m.createIOFunInstructions(0, &IIOFun{fun: applyTinyPinToggle}))
-
-	m.addGlobal("tinyGet", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyGet}))
-	m.addGlobal("tinyLow", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyLow}))
-	m.addGlobal("tinyHigh", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyHigh}))
-	m.addGlobal("tinySetInterrupt", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetInterrupt}, true, true, false))
-
-	m.addGlobal("tinySetTimer", 3, m.createIOFunInstructions(3, &IIOFun{fun: applyTinySetTimer}, true, true, false))
-	m.addGlobal("tinyStopTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStopTimer}))
-	m.addGlobal("tinyStartTimer", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyStartTimer}))
-
-	m.addGlobal("tinyI2CConfigure", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CConfigure}))
-	m.addGlobal("tinyI2CConfigureDefault", 1, m.createIOFunInstructions(1, &IIOFun{fun: applyTinyI2CConfigureDefault}))
-	m.addGlobal("tinyI2CReadRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CReadRegister}))
-	m.addGlobal("tinyI2CWriteRegister", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CWriteRegister}))
-	m.addGlobal("tinyI2CTx", 4, m.createIOFunInstructions(4, &IIOFun{fun: applyTinyI2CTx}))
+	addPlatformDependentGlobals(m)
 }
 
 func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {

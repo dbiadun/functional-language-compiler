@@ -1,4 +1,4 @@
-package main
+package compiler
 
 import (
 	"fmt"
@@ -96,7 +96,7 @@ func errFatal(v ASTNode, s string) {
 }
 
 func errFatalAnywhere(s string) {
-	log.Fatalf("Code generator error: %s\n", s)
+	log.Fatalf("Error: %s\n", s)
 }
 
 ////////////////////////////////////// ENVIRONMENT /////////////////////////////////////////
