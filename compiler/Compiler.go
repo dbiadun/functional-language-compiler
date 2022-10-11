@@ -92,7 +92,12 @@ func (c *Compiler) readCommand() {
 		c.cmd = buildCmdName
 		c.target = *buildTarget
 		c.inputFile = buildCmd.Arg(0)
-		c.outputFile = filepath.Join(c.executionDir, *buildOutput)
+
+		if filepath.IsAbs(*buildOutput) {
+			c.outputFile = *buildOutput
+		} else {
+			c.outputFile = filepath.Join(c.executionDir, *buildOutput)
+		}
 	case flashCmdName:
 		flashCmd.Parse(os.Args[2:])
 		//asdf
@@ -151,9 +156,14 @@ func (c *Compiler) compileSubtreeToGCode(filename string) {
 
 	c.filesDuringCompilation[filename] = voidMember
 
-	absPath := filepath.Join(c.codeDir, "haskellPredefined", filename)
-	if _, err := os.Stat(absPath); err != nil {
-		absPath = filepath.Join(c.executionDir, filename)
+	var absPath string
+	if filepath.IsAbs(filename) {
+		absPath = filename
+	} else {
+		absPath = filepath.Join(c.codeDir, "haskellPredefined", filename)
+		if _, err := os.Stat(absPath); err != nil {
+			absPath = filepath.Join(c.executionDir, filename)
+		}
 	}
 
 	ast := c.parseFile(absPath)
