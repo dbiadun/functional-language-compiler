@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/albenik/go-serial"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -123,6 +125,14 @@ func (t *Tester) checkTest(path string, testsDir string, expectedValid bool) {
 	outputFile := filepath.Join(testsDir, "outputs", outputName)
 	tmpFile := filepath.Join(t.testsDir, "tmp")
 
+	if len(testName) > 8 && testName[:8] == "feather_" {
+		t.checkTestOnFeather(path, testName, outputFile, expectedValid)
+	} else {
+		t.checkTestOnLinux(path, testName, inputFile, outputFile, tmpFile, expectedValid)
+	}
+}
+
+func (t *Tester) checkTestOnLinux(path string, testName string, inputFile string, outputFile string, tmpFile string, expectedValid bool) {
 	err := t.checkCompilation(testName, path, tmpFile, expectedValid)
 	if err != nil {
 		return
@@ -162,15 +172,67 @@ func (t *Tester) checkExecution(testName string, tmpFile string, inputFile strin
 }
 
 func (t *Tester) checkOutput(testName string, outputFile string, runStdout []byte, expectedValid bool) error {
+	validOutput := t.readValidOutputFile(outputFile, string(runStdout))
+	valid := string(runStdout) == validOutput
+
+	return t.reportResult(testName, valid, expectedValid, true, outputError)
+}
+
+func (t *Tester) checkTestOnFeather(path string, testName string, outputFile string, expectedValid bool) {
+	validOutput := t.readValidOutputFile(outputFile, "")
+
+	err := t.checkFlashToFeather(testName, path, expectedValid)
+	if err != nil {
+		return
+	}
+
+	t.checkFeatherOutput(testName, validOutput, expectedValid)
+}
+
+func (t *Tester) checkFlashToFeather(testName string, path string, expectedValid bool) error {
+	flashCmd := exec.Command(t.compilerPath, "flash", "-target", "feather", path)
+	_, flashErr := flashCmd.CombinedOutput()
+	valid := flashErr == nil
+
+	return t.reportResult(testName, valid, expectedValid, false, compilationError)
+}
+
+func (t *Tester) readValidOutputFile(outputFile string, defaultOutput string) string {
 	validOutput := ""
 	if outputContent, err := os.ReadFile(outputFile); err == nil {
 		validOutput = string(outputContent)
 	} else {
-		validOutput = string(runStdout)
+		validOutput = defaultOutput
 	}
 
-	valid := string(runStdout) == validOutput
-	return t.reportResult(testName, valid, expectedValid, true, outputError)
+	return validOutput
+}
+
+func (t *Tester) checkFeatherOutput(testName string, validOutput string, expectedValid bool) {
+	mode := &serial.Mode{
+		BaudRate: 9600,
+		Parity:   serial.NoParity,
+		DataBits: 8,
+		StopBits: serial.OneStopBit,
+	}
+
+	time.Sleep(time.Millisecond * 500) // To allow microcontroller to renew the connection after reset
+	port, err := serial.Open("/dev/ttyACM0", mode)
+	if err != nil {
+		t.reportResult(testName, !expectedValid, expectedValid, true, deviceError)
+		return
+	}
+
+	buffer := make([]byte, len(validOutput))
+	port.SetReadTimeout(5000)
+	n, err := port.Read(buffer)
+
+	valid := string(buffer) == validOutput
+	if err != nil || n != len(validOutput) {
+		valid = false
+	}
+
+	t.reportResult(testName, valid, expectedValid, true, outputError)
 }
 
 func (t *Tester) performPerformanceTests() {
@@ -227,4 +289,5 @@ const (
 	compilationError = "Compilation error"
 	runtimeError     = "Runtime error"
 	outputError      = "Invalid output"
+	deviceError      = "Device not available"
 )
