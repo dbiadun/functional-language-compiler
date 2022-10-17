@@ -140,7 +140,7 @@ func (c *Compiler) compileAllToGCode(filename string) {
 
 	c.compileSubtreeToGCode(filename)
 
-	// TODO: check things that should apply to the whole code (like main function existence)
+	c.typeChecker.generalCheck()
 }
 
 func (c *Compiler) compileSubtreeToGCode(filename string) {

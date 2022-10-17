@@ -31,7 +31,7 @@ CASE: 'case';
 OF: 'of';
 ARROW_RIGHT: '->';
 ARROW_LEFT: '<-';
-DEC: [0-9]+;
+DEC: '-'?[0-9]+;
 HEX: '0x' [0-9a-fA-F]+;
 CHAR: '\''.'\'';
 STRING: '"'.*?'"';

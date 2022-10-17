@@ -153,8 +153,7 @@ func (e *VarEnv) applyChange(vars []string) *EnvBackup {
 	for i := len(vars) - 1; i >= 0; i-- {
 		v := vars[i]
 		if e.varDefined(v) {
-			tag := e.getVar(v)
-			backup.changed[v] = tag
+			backup.changed[v] = e.vars[v]
 		} else {
 			backup.added = append(backup.added, v)
 		}
