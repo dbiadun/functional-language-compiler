@@ -2,10 +2,10 @@ import "List.hs";
 import "Either.hs";
 
 main :: IO ();
-main = sampleSecondTermometer;
+main = testSecondTermometer;
 
-sampleSecondTermometer :: IO ();
-sampleSecondTermometer = do {
+testSecondTermometer :: IO ();
+testSecondTermometer = do {
     tinySleep 2000;
 
     i2c <- return 0;
@@ -78,11 +78,10 @@ readTempSecond i2c termometer = do {
             tempInt <- return (t / 10);
             tempRest <- return (t - 10 * tempInt);
 
-            putStr "Temperature: ";
-            putInt tempInt;
-            putStr ",";
-            putInt tempRest;
-            putStr "\n";
+            case tempInt > 10 && tempInt < 40 of {
+                True -> putStr "Temperature between 10 and 40\n";
+                False -> putStr "Temperature suspiciously low of high\n";
+            };
         };
     };
 };

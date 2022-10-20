@@ -3,6 +3,8 @@ main = sampleGreeting;
 
 sampleGreeting :: IO ();
 sampleGreeting = do {
+    tinySleep 2000;
+
     name <- getName;
     putStr "Hi, ";
     putStr name;

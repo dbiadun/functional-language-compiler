@@ -12,6 +12,7 @@ type GMachine struct {
 	state                 *GState
 	globalMap             *GGlobalMap
 	interruptionCallbacks []*GAddr
+	interruptPending      bool
 	gcRound               int
 	gcNodeCount           int
 	gcThreshold           int
@@ -34,29 +35,38 @@ func NewGMachine() *GMachine {
 func (m *GMachine) run() int {
 	for {
 		for m.instrQueue.size() > 0 {
-			select {
-			case interruptionData := <-interruptions:
-				if interruptionData.pin >= 0 {
-					pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
-					m.stack.put(pinAddr)
-					m.stack.put(interruptionData.fun)
-
-					m.instrQueue.putN([]GInstr{
-						&IMkApp{},
-						&IEval{},
-						&IPop{n: 1},
-					})
-				} else { // No pin argument
-					m.stack.put(interruptionData.fun)
-
-					m.instrQueue.putN([]GInstr{
-						&IEval{},
-						&IPop{n: 1},
-					})
-				}
-			default:
+			if m.interruptPending {
 				instr := m.instrQueue.get()
 				instr.apply(m)
+			} else {
+				select {
+				case interruptionData := <-interruptions:
+					if interruptionData.pin >= 0 {
+						pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
+						m.stack.put(pinAddr)
+						m.stack.put(interruptionData.fun)
+
+						m.instrQueue.putN([]GInstr{
+							&IStartInterrupt{},
+							&IMkApp{},
+							&IEval{},
+							&IPop{n: 1},
+							&IStopInterrupt{},
+						})
+					} else { // No pin argument
+						m.stack.put(interruptionData.fun)
+
+						m.instrQueue.putN([]GInstr{
+							&IStartInterrupt{},
+							&IEval{},
+							&IPop{n: 1},
+							&IStopInterrupt{},
+						})
+					}
+				default:
+					instr := m.instrQueue.get()
+					instr.apply(m)
+				}
 			}
 		}
 
@@ -1112,4 +1122,20 @@ type IIOFun struct {
 
 func (i *IIOFun) apply(m *GMachine) {
 	i.fun(m)
+}
+
+type IStartInterrupt struct {
+	BaseGInstr
+}
+
+func (i *IStartInterrupt) apply(m *GMachine) {
+	m.interruptPending = true
+}
+
+type IStopInterrupt struct {
+	BaseGInstr
+}
+
+func (i *IStopInterrupt) apply(m *GMachine) {
+	m.interruptPending = false
 }

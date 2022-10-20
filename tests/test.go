@@ -209,6 +209,9 @@ func (t *Tester) readValidOutputFile(outputFile string, defaultOutput string) st
 }
 
 func (t *Tester) checkFeatherOutput(testName string, validOutput string, expectedValid bool) {
+	timeout := time.Second * 5
+	startTime := time.Now()
+
 	mode := &serial.Mode{
 		BaudRate: 9600,
 		Parity:   serial.NoParity,
@@ -224,11 +227,23 @@ func (t *Tester) checkFeatherOutput(testName string, validOutput string, expecte
 	}
 
 	buffer := make([]byte, len(validOutput))
-	port.SetReadTimeout(5000)
-	n, err := port.Read(buffer)
+
+	wholeLen := len(validOutput)
+	curLen := 0
+
+	for time.Since(startTime) < timeout && curLen < wholeLen {
+
+		localBuffer := make([]byte, wholeLen-curLen)
+		n, _ := port.Read(localBuffer)
+		copy(buffer[curLen:curLen+n], localBuffer[:n])
+		curLen += n
+	}
+
+	port.Close()
 
 	valid := string(buffer) == validOutput
-	if err != nil || n != len(validOutput) {
+
+	if curLen != wholeLen {
 		valid = false
 	}
 
