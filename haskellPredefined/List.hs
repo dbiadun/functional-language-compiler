@@ -47,12 +47,6 @@ foldl fun acc l = case l of {
     Cons x xs -> (foldl fun) (fun acc x) xs;
 };
 
-listOfFirsts :: List (List a) -> List (Maybe a);
-listOfFirsts = map fst;
-
-listOfLasts :: List (List a) -> List (Maybe a);
-listOfLasts = map last;
-
 take :: Int -> List a -> List a;
 take n l = case n > 0 of {
     False -> Nil;

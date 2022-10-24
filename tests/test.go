@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type Tester struct {
 	compilerPath string
 	passedTests  int
 	allTests     int
+	flashSize    int
 }
 
 const (
@@ -35,7 +37,6 @@ func (t *Tester) test() {
 	t.init()
 	t.printStart()
 	t.performTests()
-	t.printEnd()
 }
 
 func (t *Tester) init() {
@@ -83,10 +84,6 @@ func (t *Tester) printStart() {
 	}
 }
 
-func (t *Tester) printEnd() {
-	fmt.Printf("%d/%d tests passed\n", t.passedTests, t.allTests)
-}
-
 func (t *Tester) performFunctionalTests() {
 	functionalDir := filepath.Join(t.testsDir, "functionalTests")
 	validDir := filepath.Join(functionalDir, "valid")
@@ -94,6 +91,11 @@ func (t *Tester) performFunctionalTests() {
 
 	t.checkTestsDir(validDir, true)
 	t.checkTestsDir(invalidDir, false)
+	t.printEnd()
+}
+
+func (t *Tester) printEnd() {
+	fmt.Printf("%d/%d tests passed\n", t.passedTests, t.allTests)
 }
 
 func (t *Tester) checkTestsDir(testsDir string, expectedValid bool) {
@@ -126,7 +128,7 @@ func (t *Tester) checkTest(path string, testsDir string, expectedValid bool) {
 	tmpFile := filepath.Join(t.testsDir, "tmp")
 
 	if len(testName) > 8 && testName[:8] == "feather_" {
-		t.checkTestOnFeather(path, testName, outputFile, expectedValid)
+		t.checkTestOnFeather(path, testName, outputFile, "", expectedValid)
 	} else {
 		t.checkTestOnLinux(path, testName, inputFile, outputFile, tmpFile, expectedValid)
 	}
@@ -178,23 +180,46 @@ func (t *Tester) checkOutput(testName string, outputFile string, runStdout []byt
 	return t.reportResult(testName, valid, expectedValid, true, outputError)
 }
 
-func (t *Tester) checkTestOnFeather(path string, testName string, outputFile string, expectedValid bool) {
+func (t *Tester) checkTestOnFeather(path string, testName string, outputFile string, targetFile string, expectedValid bool) error {
 	validOutput := t.readValidOutputFile(outputFile, "")
 
-	err := t.checkFlashToFeather(testName, path, expectedValid)
+	err := t.checkFlashToFeather(testName, path, targetFile, expectedValid)
 	if err != nil {
-		return
+		return err
 	}
 
-	t.checkFeatherOutput(testName, validOutput, expectedValid)
+	return t.checkFeatherOutput(testName, validOutput, expectedValid)
 }
 
-func (t *Tester) checkFlashToFeather(testName string, path string, expectedValid bool) error {
-	flashCmd := exec.Command(t.compilerPath, "flash", "-target", "feather", path)
-	_, flashErr := flashCmd.CombinedOutput()
+func (t *Tester) checkFlashToFeather(testName string, path string, targetFile string, expectedValid bool) error {
+	args := []string{"flash", "-target", "feather", "-targetConfig", targetFile}
+
+	if t.testsType == performanceTests {
+		args = append(args, "-size")
+	}
+
+	args = append(args, path)
+
+	flashCmd := exec.Command(t.compilerPath, args...)
+	flashStdout, flashErr := flashCmd.CombinedOutput()
 	valid := flashErr == nil
 
+	if t.testsType == performanceTests && flashErr == nil {
+		t.readFlashSize(string(flashStdout))
+	}
+
 	return t.reportResult(testName, valid, expectedValid, false, compilationError)
+}
+
+func (t *Tester) readFlashSize(stdout string) {
+	var buffer string
+	var flashSize int
+
+	_, err := fmt.Sscanf(stdout, "%s %s %s | %s %s \n %s %s %s | %d", &buffer, &buffer, &buffer, &buffer, &buffer, &buffer, &buffer, &buffer, &flashSize)
+
+	if err == nil {
+		t.flashSize = (flashSize + 999) / 1000
+	}
 }
 
 func (t *Tester) readValidOutputFile(outputFile string, defaultOutput string) string {
@@ -208,7 +233,7 @@ func (t *Tester) readValidOutputFile(outputFile string, defaultOutput string) st
 	return validOutput
 }
 
-func (t *Tester) checkFeatherOutput(testName string, validOutput string, expectedValid bool) {
+func (t *Tester) checkFeatherOutput(testName string, validOutput string, expectedValid bool) error {
 	timeout := time.Second * 5
 	startTime := time.Now()
 
@@ -222,8 +247,7 @@ func (t *Tester) checkFeatherOutput(testName string, validOutput string, expecte
 	time.Sleep(time.Millisecond * 500) // To allow microcontroller to renew the connection after reset
 	port, err := serial.Open("/dev/ttyACM0", mode)
 	if err != nil {
-		t.reportResult(testName, !expectedValid, expectedValid, true, deviceError)
-		return
+		return t.reportResult(testName, !expectedValid, expectedValid, true, deviceError)
 	}
 
 	buffer := make([]byte, len(validOutput))
@@ -247,11 +271,7 @@ func (t *Tester) checkFeatherOutput(testName string, validOutput string, expecte
 		valid = false
 	}
 
-	t.reportResult(testName, valid, expectedValid, true, outputError)
-}
-
-func (t *Tester) performPerformanceTests() {
-
+	return t.reportResult(testName, valid, expectedValid, true, outputError)
 }
 
 func (t *Tester) reportResult(testName string, valid bool, expectedValid bool, finalCheck bool, err string) error {
@@ -265,9 +285,17 @@ func (t *Tester) reportResult(testName string, valid bool, expectedValid bool, f
 	// Only in this case the test stops and we need to report its result
 	if !valid || finalCheck {
 		if passed {
-			t.reportPassed(testName)
+			if t.testsType == performanceTests {
+				return nil
+			} else {
+				t.reportPassed(testName)
+			}
 		} else {
-			t.reportFailed(testName, errToReport)
+			if t.testsType == performanceTests {
+				return errors.New(errToReport)
+			} else {
+				t.reportFailed(testName, errToReport)
+			}
 		}
 
 		return errors.New("end of execution")
@@ -306,3 +334,123 @@ const (
 	outputError      = "Invalid output"
 	deviceError      = "Device not available"
 )
+
+func (t *Tester) performPerformanceTests() {
+	performanceDir := filepath.Join(t.testsDir, "performanceTests")
+
+	t.checkPerformanceTestsDir(performanceDir)
+}
+
+func (t *Tester) checkPerformanceTestsDir(testsDir string) {
+	dirName := filepath.Base(testsDir)
+	fmt.Printf("Tests from the '%s' directory:\n", dirName)
+	t.printMemLine("test", "flash", "ram")
+
+	codeDir := filepath.Join(testsDir, "code")
+
+	filepath.WalkDir(codeDir, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			if path != codeDir {
+				return filepath.SkipDir
+			}
+		} else {
+			t.checkPerformanceTest(path, testsDir)
+		}
+
+		return nil
+	})
+}
+
+func (t *Tester) checkPerformanceTest(path string, testsDir string) {
+	filename := filepath.Base(path)
+	testName := filename[:len(filename)-3]
+	outputName := testName + "Output"
+
+	configDir := filepath.Join(testsDir, "config")
+	outputFile := filepath.Join(testsDir, "outputs", outputName)
+
+	minRam := 1
+	maxRam := maxDeviceRam
+
+	maxRamSufficient := t.checkOneTestRamSize(testName, path, outputFile, maxRam, configDir)
+	if !maxRamSufficient {
+		t.reportMem(testName, true, 0)
+		return
+	}
+
+	for maxRam > minRam {
+		midRam := (maxRam + minRam) / 2
+
+		ramSufficient := t.checkOneTestRamSize(testName, path, outputFile, midRam, configDir)
+		if ramSufficient {
+			maxRam = midRam
+		} else {
+			minRam = midRam + 1
+		}
+	}
+
+	t.reportMem(testName, false, maxRam)
+}
+
+func (t *Tester) checkOneTestRamSize(testName string, path string, outputFile string, size int, configDir string) bool {
+	linkerConfigFile := filepath.Join(configDir, "custom.ld")
+	linkerPatternFile := filepath.Join(configDir, "pattern.ld")
+	targetConfigFile := filepath.Join(configDir, "target.json")
+
+	t.setCurTestSize(size, linkerPatternFile, linkerConfigFile)
+	return t.checkIfRamSufficient(testName, path, outputFile, targetConfigFile)
+}
+
+func (t *Tester) setCurTestSize(size int, patternFile string, configFile string) {
+	if pattern, err := os.ReadFile(patternFile); err == nil {
+		patternString := string(pattern)
+		sizeString := fmt.Sprintf("%d", size*1000)
+		configString := strings.Replace(patternString, "$RAM_SIZE", sizeString, 1)
+
+		os.WriteFile(configFile, []byte(configString), 0664)
+	}
+}
+
+func (t *Tester) checkIfRamSufficient(testName string, path string, outputFile string, targetConfigFile string) bool {
+	err := t.checkTestOnFeather(path, testName, outputFile, targetConfigFile, true)
+
+	return err == nil
+}
+
+func (t *Tester) reportMem(testName string, tooMuchMemoryNeeded bool, sufficientRam int) {
+	var ramString string
+
+	if tooMuchMemoryNeeded {
+		ramString = fmt.Sprintf(">%dkB", maxDeviceRam)
+	} else {
+		ramString = fmt.Sprintf("%dkB", sufficientRam)
+	}
+
+	flashString := fmt.Sprintf("%dkB", t.flashSize)
+
+	t.printMemLine(testName, flashString, ramString)
+}
+
+func (t *Tester) printMemLine(nameString string, flashString string, ramString string) {
+	nameBuf := createFilledRuneSlice(32, ' ')
+	flashBuf := createFilledRuneSlice(16, ' ')
+	ramBuf := createFilledRuneSlice(16, ' ')
+
+	copy(nameBuf, []rune(nameString))
+	copy(flashBuf, []rune(flashString))
+	copy(ramBuf, []rune(ramString))
+
+	fmt.Printf("%s%s%s\n", string(nameBuf), string(flashBuf), string(ramBuf))
+}
+
+func createFilledRuneSlice(size int, val rune) []rune {
+	s := make([]rune, size)
+
+	for i := range s {
+		s[i] = val
+	}
+
+	return s
+}
+
+const maxDeviceRam = 245

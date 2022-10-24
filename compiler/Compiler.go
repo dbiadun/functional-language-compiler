@@ -24,6 +24,8 @@ type Compiler struct {
 	inputFile              string
 	outputFile             string
 	target                 string
+	targetConfig           string
+	printSize              bool
 	tags                   []string
 }
 
@@ -77,8 +79,11 @@ func (c *Compiler) readCommand() {
 
 	buildTarget := buildCmd.String("target", linuxTargetName, "target")
 	buildOutput := buildCmd.String("o", "a", "output file")
+	buildSize := buildCmd.Bool("size", false, "size")
 
 	flashTarget := flashCmd.String("target", "", "target")
+	flashTargetConfig := flashCmd.String("targetConfig", "", "targetConfig")
+	flashSize := flashCmd.Bool("size", false, "size")
 
 	if len(os.Args) < 2 {
 		fmt.Printf("expected '%s' or '%s' subcommands", buildCmdName, flashCmdName)
@@ -92,6 +97,7 @@ func (c *Compiler) readCommand() {
 		c.cmd = buildCmdName
 		c.target = *buildTarget
 		c.inputFile = buildCmd.Arg(0)
+		c.printSize = *buildSize
 
 		if filepath.IsAbs(*buildOutput) {
 			c.outputFile = *buildOutput
@@ -103,7 +109,9 @@ func (c *Compiler) readCommand() {
 		//asdf
 		c.cmd = flashCmdName
 		c.target = *flashTarget
+		c.targetConfig = *flashTargetConfig
 		c.inputFile = flashCmd.Arg(0)
+		c.printSize = *flashSize
 	}
 
 	switch c.target {
@@ -187,12 +195,17 @@ func (c *Compiler) compileGCode(inputDirectory string) {
 
 	//args = append(args, "tinygo")
 	args = append(args, c.cmd)
+
 	args = append(args, fmt.Sprintf("-target=%s", c.getTinyGoTarget()))
 	args = append(args, fmt.Sprintf("-tags=%q", tags))
-	//args = append(args, "-size", "full")
+
+	if c.printSize {
+		args = append(args, "-size=short")
+	}
 
 	if c.cmd == buildCmdName {
 		args = append(args, "-o", c.outputFile)
+
 	}
 
 	args = append(args, relInputDir)
@@ -244,6 +257,10 @@ func (c *Compiler) compileImportedFiles(ast *TopDeclsList) {
 }
 
 func (c *Compiler) getTinyGoTarget() string {
+	if c.targetConfig != "" {
+		return c.targetConfig
+	}
+
 	switch c.target {
 	case featherTargetName:
 		return "feather-nrf52840-sense"

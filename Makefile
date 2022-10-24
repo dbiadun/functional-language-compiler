@@ -6,3 +6,7 @@ make_compiler:
 functional_tests:
 	go build -o ./tests/test ./tests
 	./tests/test functional
+
+performance_tests:
+	go build -o ./tests/test ./tests
+	./tests/test performance
