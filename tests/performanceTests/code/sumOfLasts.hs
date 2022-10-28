@@ -5,7 +5,7 @@ main :: IO ();
 main = do {
     tinySleep 2000;
 
-    sum <- return (sumOfLasts 21);
+    sum <- return (sumOfLasts 18);
     putInt sum;
 };
 

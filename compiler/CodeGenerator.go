@@ -412,13 +412,11 @@ func (g *CodeGenerator) genVarDecl(v *VarDecl) {
 	g.reset()
 	g.genRhs(v.rhs)
 
-	if isIO {
-		g.pushInstr(cSlide, "1")
+	g.pushInstr(cSlide, "1")
 
+	if isIO {
 		// We need it to prevent from exiting the program
 		g.pushInstr(cUnwind)
-	} else {
-		g.pushInstr(cUpdate, "0")
 	}
 
 	g.functionArities[funName] = 0

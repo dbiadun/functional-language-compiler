@@ -250,8 +250,25 @@ func (m *GMachine) gcVisitNode(addr *GAddr) {
 		switch node := node.(type) {
 		case *NInt:
 		case *NApp:
-			m.gcVisitNode(node.fun)
 			m.gcVisitNode(node.arg)
+			for {
+				newNode := m.heap.get(node.fun)
+				if newNode == nil {
+					break
+				}
+
+				newNode.setGcRound(m.gcRound)
+
+				newNode, ok := newNode.(*NApp)
+
+				if ok {
+					node = newNode.(*NApp)
+					m.gcVisitNode(node.arg)
+				} else {
+					m.gcVisitNode(node.fun)
+					break
+				}
+			}
 		case *NGlobal:
 		case *NInd:
 			m.gcVisitNode(node.a)
@@ -441,6 +458,10 @@ func (h *GHeap) newAddr() *GAddr {
 }
 
 func (h *GHeap) get(addr *GAddr) GNode {
+	if addr == nil {
+		return nil
+	}
+
 	node, ok := h.h[addr.a]
 	if ok {
 		return node

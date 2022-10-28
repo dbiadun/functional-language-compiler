@@ -26,6 +26,7 @@ type Tester struct {
 	passedTests  int
 	allTests     int
 	flashSize    int
+	chosenTest   string
 }
 
 const (
@@ -56,6 +57,10 @@ func (t *Tester) init() {
 		t.testsType = functionalTests
 	case performanceCmdName:
 		t.testsType = performanceTests
+	}
+
+	if len(os.Args) > 2 {
+		t.chosenTest = os.Args[2]
 	}
 }
 
@@ -120,6 +125,11 @@ func (t *Tester) checkTestsDir(testsDir string, expectedValid bool) {
 func (t *Tester) checkTest(path string, testsDir string, expectedValid bool) {
 	filename := filepath.Base(path)
 	testName := filename[:len(filename)-3]
+
+	if t.chosenTest != "" && testName != t.chosenTest {
+		return
+	}
+
 	inputName := testName + "Input"
 	outputName := testName + "Output"
 
@@ -235,6 +245,9 @@ func (t *Tester) readValidOutputFile(outputFile string, defaultOutput string) st
 
 func (t *Tester) checkFeatherOutput(testName string, validOutput string, expectedValid bool) error {
 	timeout := time.Second * 5
+	if t.testsType == performanceTests {
+		timeout = time.Second * 10
+	}
 	startTime := time.Now()
 
 	mode := &serial.Mode{
@@ -364,6 +377,11 @@ func (t *Tester) checkPerformanceTestsDir(testsDir string) {
 func (t *Tester) checkPerformanceTest(path string, testsDir string) {
 	filename := filepath.Base(path)
 	testName := filename[:len(filename)-3]
+
+	if t.chosenTest != "" && testName != t.chosenTest {
+		return
+	}
+
 	outputName := testName + "Output"
 
 	configDir := filepath.Join(testsDir, "config")
