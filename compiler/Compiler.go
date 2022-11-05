@@ -22,6 +22,7 @@ type Compiler struct {
 	executionDir           string
 	cmd                    string
 	inputFile              string
+	inputDir               string
 	outputFile             string
 	target                 string
 	targetConfig           string
@@ -120,6 +121,14 @@ func (c *Compiler) readCommand() {
 	case featherTargetName:
 		c.tags = append(c.tags, featherTargetTag)
 	}
+
+	var absPath string
+	if filepath.IsAbs(c.inputFile) {
+		absPath = c.inputFile
+	} else {
+		absPath = filepath.Join(c.executionDir, c.inputFile)
+	}
+	c.inputDir = filepath.Dir(absPath)
 }
 
 const (
@@ -171,6 +180,9 @@ func (c *Compiler) compileSubtreeToGCode(filename string) {
 		absPath = filepath.Join(c.codeDir, "haskellPredefined", filename)
 		if _, err := os.Stat(absPath); err != nil {
 			absPath = filepath.Join(c.executionDir, filename)
+			if _, err := os.Stat(absPath); err != nil {
+				absPath = filepath.Join(c.inputDir, filename)
+			}
 		}
 	}
 

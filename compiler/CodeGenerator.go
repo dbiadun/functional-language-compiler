@@ -655,10 +655,10 @@ func (g *CodeGenerator) genAlternative(v *Alternative) (int, []*Instr) {
 	if tag >= 0 {
 		g.pushInstr(cSplit)
 	}
+
 	g.genExp(v.exp)
-	if tag >= 0 {
-		g.pushInstr(cSlide, fmt.Sprintf("%d", backup.size()))
-	}
+
+	g.pushInstr(cSlide, fmt.Sprintf("%d", backup.size()))
 
 	code := g.code
 	g.env.revertChange(backup)
