@@ -20,6 +20,7 @@ For now it supports two targets (Linux and Adafruit Feather Sense).
   - performanceTests/
   - libs/ - code used by multiple tests
 - go.mod - go module config file
+- go.sum - go dependencies
 - Language.g4 - language grammar
 - main.go - main compiler file
 - Makefile - project makefile
@@ -37,7 +38,7 @@ It will compile the project and create `build/compiler` executable.
 
 If you want to modify the language grammar you need to download `antlr 4.10.1` and run it in the project directory
 on the modified Language.g4 file with the following flags: `-visitor -Dlanguage=Go -o parser`.
-After that you can normally run make to build the compiler.
+After that you can normally run `make` to build the compiler.
 
 `build/compiler` will have two commands:
 - `build/compiler build <path>` compiles a program at the location indicated by `<path>` and creates an executable.
