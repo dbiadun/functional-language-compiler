@@ -62,5 +62,4 @@ In both cases you can also choose a specific test to run by adding `test=<test_n
 `<test_name>` is just the name of the test (without path and filename extension).
 For example `make functional_tests test=fibonacci`.
 
-
-
+There are also a few tests to run manually in the `tests/functionalTests/manualExamples` directory.
