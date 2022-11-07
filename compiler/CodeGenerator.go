@@ -153,8 +153,7 @@ func (e *VarEnv) applyChange(vars []string) *EnvBackup {
 	for i := len(vars) - 1; i >= 0; i-- {
 		v := vars[i]
 		if e.varDefined(v) {
-			tag := e.getVar(v)
-			backup.changed[v] = tag
+			backup.changed[v] = e.vars[v]
 		} else {
 			backup.added = append(backup.added, v)
 		}
@@ -413,13 +412,11 @@ func (g *CodeGenerator) genVarDecl(v *VarDecl) {
 	g.reset()
 	g.genRhs(v.rhs)
 
-	if isIO {
-		g.pushInstr(cSlide, "1")
+	g.pushInstr(cSlide, "1")
 
+	if isIO {
 		// We need it to prevent from exiting the program
 		g.pushInstr(cUnwind)
-	} else {
-		g.pushInstr(cUpdate, "0")
 	}
 
 	g.functionArities[funName] = 0
@@ -658,10 +655,10 @@ func (g *CodeGenerator) genAlternative(v *Alternative) (int, []*Instr) {
 	if tag >= 0 {
 		g.pushInstr(cSplit)
 	}
+
 	g.genExp(v.exp)
-	if tag >= 0 {
-		g.pushInstr(cSlide, fmt.Sprintf("%d", backup.size()))
-	}
+
+	g.pushInstr(cSlide, fmt.Sprintf("%d", backup.size()))
 
 	code := g.code
 	g.env.revertChange(backup)

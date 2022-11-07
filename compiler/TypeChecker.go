@@ -34,6 +34,10 @@ func (c *TypeChecker) checkCodePart(ast TopDecls) {
 	c.checkTopDecls(ast)
 }
 
+func (c *TypeChecker) generalCheck() {
+	c.checkMainFun()
+}
+
 func (*TypeChecker) errFatal(v ASTNode, s string) {
 	line, col := v.getPos()
 	log.Fatalf("TypeChecker error at line %d, column %d: %s\n", line, col, s)
@@ -450,6 +454,10 @@ func (c *TypeChecker) checkIOType(v ASTNode, t *FunType) *FunType {
 	c.applySubstitutions(t)
 	c.reduceParens(t)
 
+	if len(t.types) > 1 {
+		c.errFatal(v, "Too few arguments passed")
+	}
+
 	bType := t.types[0]
 	typeApp := bType.(*TypeApp)
 
@@ -466,12 +474,7 @@ func (c *TypeChecker) checkIOType(v ASTNode, t *FunType) *FunType {
 		c.errFatal(v, "Not an IO type")
 	}
 
-	switch arg := arg.(type) {
-	case *UnitType:
-		return nil
-	default:
-		return &FunType{types: []BType{&TypeApp{types: []AType{arg}}}}
-	}
+	return &FunType{types: []BType{&TypeApp{types: []AType{arg}}}}
 }
 
 func (c *TypeChecker) funIsIO(fun string) bool {
@@ -1233,6 +1236,7 @@ func (c *TypeChecker) checkRhs(v Rhs) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkDeclExp(v *DeclExp) *TypeCheckResult {
+	v.e.setExecuted()
 	return c.checkExp(v.e)
 }
 
@@ -1267,6 +1271,11 @@ func (c *TypeChecker) checkEFun(v *EFun) *TypeCheckResult {
 }
 
 func (c *TypeChecker) checkEDo(v *EDo) *TypeCheckResult {
+	if v.executed() {
+		v.stmts.setExecuted()
+	} else {
+		c.errFatal(v, "Do expressions available only in function definitions, case branches, and statements of the other do expressions")
+	}
 	return c.checkStmts(v.stmts)
 }
 
@@ -1279,6 +1288,10 @@ func (c *TypeChecker) checkECase(v *ECase) *TypeCheckResult {
 
 	var altType *FunType
 	for i, alt := range v.alts {
+		if v.executed() {
+			alt.setExecuted()
+		}
+
 		t := c.checkAlternative(alt, expType).t
 
 		if i == 0 {
@@ -1477,9 +1490,17 @@ func (c *TypeChecker) checkStmtsList(v *StmtsList) *TypeCheckResult {
 	var changeBackups []*ChangeBackup
 
 	for _, stmt := range v.statements {
+		if v.executed() {
+			stmt.setExecuted()
+		}
+
 		backup := c.checkStmt(stmt)
 		changeBackups = append(changeBackups, backup)
 	}
+	if v.executed() {
+		v.exp.setExecuted()
+	}
+
 	res := c.checkExp(v.exp)
 	c.checkIOType(v.exp, res.t)
 
@@ -1502,6 +1523,10 @@ func (c *TypeChecker) checkStmt(v Stmt) *ChangeBackup {
 }
 
 func (c *TypeChecker) checkSExp(v *SExp) *ChangeBackup {
+	if v.executed() {
+		v.exp.setExecuted()
+	}
+
 	ioType := c.checkExp(v.exp).t
 	c.checkIOType(v, ioType)
 
@@ -1523,6 +1548,10 @@ func (c *TypeChecker) checkSAssign(v *SAssign) *ChangeBackup {
 
 	varName := aPatVar.id
 
+	if v.executed() {
+		v.exp.setExecuted()
+	}
+
 	ioType := c.checkExp(v.exp).t
 	resType := c.checkIOType(v, ioType)
 
@@ -1535,6 +1564,10 @@ func (c *TypeChecker) checkAlternative(v *Alternative, caseType *FunType) *TypeC
 	c.context[CurChangeBackup] = &ChangeBackup{make(map[string]*FunType), make(map[string]void)}
 	// Should add vars to CurChangeBackup
 	c.checkPat(v.pat, caseType)
+
+	if v.executed() {
+		v.exp.setExecuted()
+	}
 
 	typesBackup := c.context[CurChangeBackup].(*ChangeBackup)
 	expType := c.checkExp(v.exp).t
@@ -1676,4 +1709,16 @@ func (c *TypeChecker) checkDataTypeExistence(v ASTNode, constr string, argsCount
 	}
 
 	return &TypeCheckResult{}
+}
+
+////////////////////////////////////// GENERAL CHECK ///////////////////////////////////////
+
+func (c *TypeChecker) checkMainFun() {
+	mainType, ok := c.types["main"]
+	if !ok {
+		errFatalAnywhere("TypeChecker error: No main function")
+	}
+
+	validType := &FunType{types: []BType{&TypeApp{types: []AType{&ConType{id: "IO"}, &UnitType{}}}}}
+	c.checkMatch(&BaseASTNode{}, validType, mainType, false)
 }

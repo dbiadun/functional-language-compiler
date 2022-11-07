@@ -9,11 +9,14 @@ type ASTNode interface {
 	getPos() (int, int)
 	setPos(int, int)
 	setPosFromCtx(antlr.ParserRuleContext)
+	executed() bool
+	setExecuted()
 }
 
 type BaseASTNode struct {
-	posLine int
-	posCol  int
+	posLine       int
+	posCol        int
+	beingExecuted bool
 }
 
 func (BaseASTNode) astNode() {}
@@ -31,6 +34,14 @@ func (node *BaseASTNode) setPosFromCtx(ctx antlr.ParserRuleContext) {
 	col := ctx.GetStart().GetColumn()
 
 	node.setPos(line, col)
+}
+
+func (node *BaseASTNode) executed() bool {
+	return node.beingExecuted
+}
+
+func (node *BaseASTNode) setExecuted() {
+	node.beingExecuted = true
 }
 
 // topdecls

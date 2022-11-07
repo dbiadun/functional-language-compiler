@@ -160,6 +160,13 @@ sampleLazyOperators = just (fst (Cons 3 (Cons (1/0) Nil)));
 sampleTake :: Int; -- Checks lazy evaluation of infinite structures like `numbers`
 sampleTake = sum (take 4 (Cons 3 (Cons 2 (Cons 4 (Cons 6 (Cons 7 Nil)))))); -- 15
 
+
+listOfFirsts :: List (List a) -> List (Maybe a);
+listOfFirsts = map fst;
+
+listOfLasts :: List (List a) -> List (Maybe a);
+listOfLasts = map last;
+
 sampleSumOfLasts :: Int; -- Checks the performance when many nodes are needed (garbage collection)
 sampleSumOfLasts = sum (map just (listOfLasts (map nNumbers (nNumbers 30))));
 

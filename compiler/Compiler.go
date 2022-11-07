@@ -22,8 +22,11 @@ type Compiler struct {
 	executionDir           string
 	cmd                    string
 	inputFile              string
+	inputDir               string
 	outputFile             string
 	target                 string
+	targetConfig           string
+	printSize              bool
 	tags                   []string
 }
 
@@ -77,8 +80,11 @@ func (c *Compiler) readCommand() {
 
 	buildTarget := buildCmd.String("target", linuxTargetName, "target")
 	buildOutput := buildCmd.String("o", "a", "output file")
+	buildSize := buildCmd.Bool("size", false, "size")
 
 	flashTarget := flashCmd.String("target", "", "target")
+	flashTargetConfig := flashCmd.String("targetConfig", "", "targetConfig")
+	flashSize := flashCmd.Bool("size", false, "size")
 
 	if len(os.Args) < 2 {
 		fmt.Printf("expected '%s' or '%s' subcommands", buildCmdName, flashCmdName)
@@ -92,13 +98,21 @@ func (c *Compiler) readCommand() {
 		c.cmd = buildCmdName
 		c.target = *buildTarget
 		c.inputFile = buildCmd.Arg(0)
-		c.outputFile = filepath.Join(c.executionDir, *buildOutput)
+		c.printSize = *buildSize
+
+		if filepath.IsAbs(*buildOutput) {
+			c.outputFile = *buildOutput
+		} else {
+			c.outputFile = filepath.Join(c.executionDir, *buildOutput)
+		}
 	case flashCmdName:
 		flashCmd.Parse(os.Args[2:])
 		//asdf
 		c.cmd = flashCmdName
 		c.target = *flashTarget
+		c.targetConfig = *flashTargetConfig
 		c.inputFile = flashCmd.Arg(0)
+		c.printSize = *flashSize
 	}
 
 	switch c.target {
@@ -107,6 +121,14 @@ func (c *Compiler) readCommand() {
 	case featherTargetName:
 		c.tags = append(c.tags, featherTargetTag)
 	}
+
+	var absPath string
+	if filepath.IsAbs(c.inputFile) {
+		absPath = c.inputFile
+	} else {
+		absPath = filepath.Join(c.executionDir, c.inputFile)
+	}
+	c.inputDir = filepath.Dir(absPath)
 }
 
 const (
@@ -135,7 +157,7 @@ func (c *Compiler) compileAllToGCode(filename string) {
 
 	c.compileSubtreeToGCode(filename)
 
-	// TODO: check things that should apply to the whole code (like main function existence)
+	c.typeChecker.generalCheck()
 }
 
 func (c *Compiler) compileSubtreeToGCode(filename string) {
@@ -151,9 +173,17 @@ func (c *Compiler) compileSubtreeToGCode(filename string) {
 
 	c.filesDuringCompilation[filename] = voidMember
 
-	absPath := filepath.Join(c.codeDir, "haskellPredefined", filename)
-	if _, err := os.Stat(absPath); err != nil {
-		absPath = filepath.Join(c.executionDir, filename)
+	var absPath string
+	if filepath.IsAbs(filename) {
+		absPath = filename
+	} else {
+		absPath = filepath.Join(c.codeDir, "haskellPredefined", filename)
+		if _, err := os.Stat(absPath); err != nil {
+			absPath = filepath.Join(c.executionDir, filename)
+			if _, err := os.Stat(absPath); err != nil {
+				absPath = filepath.Join(c.inputDir, filename)
+			}
+		}
 	}
 
 	ast := c.parseFile(absPath)
@@ -177,12 +207,17 @@ func (c *Compiler) compileGCode(inputDirectory string) {
 
 	//args = append(args, "tinygo")
 	args = append(args, c.cmd)
+
 	args = append(args, fmt.Sprintf("-target=%s", c.getTinyGoTarget()))
 	args = append(args, fmt.Sprintf("-tags=%q", tags))
-	//args = append(args, "-size", "full")
+
+	if c.printSize {
+		args = append(args, "-size=short")
+	}
 
 	if c.cmd == buildCmdName {
 		args = append(args, "-o", c.outputFile)
+
 	}
 
 	args = append(args, relInputDir)
@@ -234,6 +269,10 @@ func (c *Compiler) compileImportedFiles(ast *TopDeclsList) {
 }
 
 func (c *Compiler) getTinyGoTarget() string {
+	if c.targetConfig != "" {
+		return c.targetConfig
+	}
+
 	switch c.target {
 	case featherTargetName:
 		return "feather-nrf52840-sense"

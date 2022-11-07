@@ -643,7 +643,7 @@ func (v *BuildASTVisitor) VisitString(ctx *parser.StringContext) interface{} {
 
 	s := ctx.GetText()
 	s = strings.ReplaceAll(s, "\\r", "\r")
-	s = strings.ReplaceAll(s, "\\n", "\n\r")
+	s = strings.ReplaceAll(s, "\\n", "\n")
 	r.s = strings.TrimPrefix(strings.TrimSuffix(s, "\""), "\"")
 
 	return r
@@ -655,10 +655,10 @@ func (v *BuildASTVisitor) VisitDec(ctx *parser.DecContext) interface{} {
 	e := new(Int)
 	e.setPosFromCtx(ctx)
 
-	n, err := strconv.Atoi(ctx.GetText())
+	n, err := strconv.ParseInt(ctx.GetText(), 10, 32)
 
 	if err == nil {
-		e.n = n
+		e.n = int(n)
 	} else {
 		log.Fatalln(fmt.Sprintf("Error: '%s' is not a permitted integer", ctx.GetText()))
 	}
@@ -670,7 +670,7 @@ func (v *BuildASTVisitor) VisitHex(ctx *parser.HexContext) interface{} {
 	e := new(Int)
 	e.setPosFromCtx(ctx)
 
-	n, err := strconv.ParseInt(ctx.GetText()[2:], 16, 64)
+	n, err := strconv.ParseInt(ctx.GetText()[2:], 16, 32)
 
 	if err == nil {
 		e.n = int(n)

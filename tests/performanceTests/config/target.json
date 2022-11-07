@@ -1,0 +1,4 @@
+{
+  "inherits": [ "feather-nrf52840-sense" ],
+  "linkerscript": "./tests/performanceTests/config/custom.ld"
+}

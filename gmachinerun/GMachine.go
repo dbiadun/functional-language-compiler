@@ -12,6 +12,7 @@ type GMachine struct {
 	state                 *GState
 	globalMap             *GGlobalMap
 	interruptionCallbacks []*GAddr
+	interruptPending      bool
 	gcRound               int
 	gcNodeCount           int
 	gcThreshold           int
@@ -34,29 +35,38 @@ func NewGMachine() *GMachine {
 func (m *GMachine) run() int {
 	for {
 		for m.instrQueue.size() > 0 {
-			select {
-			case interruptionData := <-interruptions:
-				if interruptionData.pin >= 0 {
-					pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
-					m.stack.put(pinAddr)
-					m.stack.put(interruptionData.fun)
-
-					m.instrQueue.putN([]GInstr{
-						&IMkApp{},
-						&IEval{},
-						&IPop{n: 1},
-					})
-				} else { // No pin argument
-					m.stack.put(interruptionData.fun)
-
-					m.instrQueue.putN([]GInstr{
-						&IEval{},
-						&IPop{n: 1},
-					})
-				}
-			default:
+			if m.interruptPending {
 				instr := m.instrQueue.get()
 				instr.apply(m)
+			} else {
+				select {
+				case interruptionData := <-interruptions:
+					if interruptionData.pin >= 0 {
+						pinAddr := m.allocNewNode(&NInt{n: interruptionData.pin})
+						m.stack.put(pinAddr)
+						m.stack.put(interruptionData.fun)
+
+						m.instrQueue.putN([]GInstr{
+							&IStartInterrupt{},
+							&IMkApp{},
+							&IEval{},
+							&IPop{n: 1},
+							&IStopInterrupt{},
+						})
+					} else { // No pin argument
+						m.stack.put(interruptionData.fun)
+
+						m.instrQueue.putN([]GInstr{
+							&IStartInterrupt{},
+							&IEval{},
+							&IPop{n: 1},
+							&IStopInterrupt{},
+						})
+					}
+				default:
+					instr := m.instrQueue.get()
+					instr.apply(m)
+				}
 			}
 		}
 
@@ -240,8 +250,25 @@ func (m *GMachine) gcVisitNode(addr *GAddr) {
 		switch node := node.(type) {
 		case *NInt:
 		case *NApp:
-			m.gcVisitNode(node.fun)
 			m.gcVisitNode(node.arg)
+			for {
+				newNode := m.heap.get(node.fun)
+				if newNode == nil {
+					break
+				}
+
+				newNode.setGcRound(m.gcRound)
+
+				newNode, ok := newNode.(*NApp)
+
+				if ok {
+					node = newNode.(*NApp)
+					m.gcVisitNode(node.arg)
+				} else {
+					m.gcVisitNode(node.fun)
+					break
+				}
+			}
 		case *NGlobal:
 		case *NInd:
 			m.gcVisitNode(node.a)
@@ -431,6 +458,10 @@ func (h *GHeap) newAddr() *GAddr {
 }
 
 func (h *GHeap) get(addr *GAddr) GNode {
+	if addr == nil {
+		return nil
+	}
+
 	node, ok := h.h[addr.a]
 	if ok {
 		return node
@@ -1112,4 +1143,20 @@ type IIOFun struct {
 
 func (i *IIOFun) apply(m *GMachine) {
 	i.fun(m)
+}
+
+type IStartInterrupt struct {
+	BaseGInstr
+}
+
+func (i *IStartInterrupt) apply(m *GMachine) {
+	m.interruptPending = true
+}
+
+type IStopInterrupt struct {
+	BaseGInstr
+}
+
+func (i *IStopInterrupt) apply(m *GMachine) {
+	m.interruptPending = false
 }
