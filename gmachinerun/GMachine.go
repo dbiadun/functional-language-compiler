@@ -137,7 +137,6 @@ func (m *GMachine) createFunInstructions(arity int, funInstr GInstr) []GInstr {
 	instrs = append(instrs, funInstr)
 	instrs = append(instrs, &IUpdate{n: arity})
 	instrs = append(instrs, &IPop{n: arity})
-	instrs = append(instrs, &IUnwind{})
 
 	return instrs
 }
